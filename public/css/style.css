@@ -2330,3 +2330,8 @@ input.score-input:disabled { opacity: 0.5; }
    the button sat flush against the top with dead space underneath — which read
    as uneven padding. */
 .gw-strip .tab-bar { padding-bottom: 0; }
+
+/* Spacing between the Your stats / Overall stats groups. */
+#praiseSummary .subsection-title { margin-top: 1.25rem; }
+#praiseSummary .subsection-title:first-child { margin-top: 0; }
+#praiseSummary .stat-row { margin-bottom: 0; }

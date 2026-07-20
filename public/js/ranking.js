@@ -42,36 +42,57 @@ function renderTable(board, gws, meId) {
 }
 
 function renderPraise(praise, board) {
-  // Across the league: how many results have been called right, out of every
-  // prediction made on a fixture that has since been played.
-  let correct = 0, predicted = 0;
-  (board || []).forEach(p => {
-    correct += p.resultPoints;
-    predicted += Object.values(p.matchPoints || {}).filter(m => m.predicted).length;
-  });
-  const rate = predicted ? Math.round((correct / predicted) * 100) : null;
+  const { userId } = Session.load();
 
-  // Weeks where somebody actually called all six.
+  // Correct results over every prediction made on a fixture that has been
+  // played. Counting predictions rather than fixtures means a player who
+  // missed a week isn't penalised in their own percentage.
+  const tally = p => {
+    const predicted = Object.values(p.matchPoints || {}).filter(m => m.predicted).length;
+    return { correct: p.resultPoints, predicted,
+             rate: predicted ? Math.round((p.resultPoints / predicted) * 100) : null };
+  };
+
+  const me = (board || []).find(p => p.id === userId);
+  const myJackpots = me
+    ? praise.weekly.filter(w => w.winners.some(x => x.id === userId)).length
+    : 0;
+
+  let allCorrect = 0, allPredicted = 0;
+  (board || []).forEach(p => {
+    const t = tally(p);
+    allCorrect += t.correct;
+    allPredicted += t.predicted;
+  });
+  const allRate = allPredicted ? Math.round((allCorrect / allPredicted) * 100) : null;
   const jackpotsWon = praise.weekly.filter(w => !w.rolledOver).length;
 
+  const tile = (value, label, cls = '') =>
+    `<div class="stat-tile${cls}">
+       <span class="stat-value">${value}</span>
+       <span class="stat-label">${label}</span>
+     </div>`;
+
+  const mine = me ? tally(me) : null;
+
   el('praiseSummary').innerHTML = `
+    ${me ? `
+      <p class="subsection-title">Your stats</p>
+      <div class="stat-row">
+        ${tile(pts(mine.correct), 'Correct predictions')}
+        ${tile(mine.rate === null ? '—' : mine.rate + '%', 'Success rate')}
+        ${tile(pts(myJackpots), 'Jackpots won')}
+      </div>
+    ` : `
+      <p class="subsection-title">Your stats</p>
+      <p class="empty">Sign in to see how you're doing.</p>
+    `}
+
+    <p class="subsection-title">Overall stats</p>
     <div class="stat-row">
-      <div class="stat-tile">
-        <span class="stat-value">${pts(correct)}</span>
-        <span class="stat-label">Correct predictions</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-value">${rate === null ? '—' : rate + '%'}</span>
-        <span class="stat-label">Success rate</span>
-      </div>
-      <div class="stat-tile highlight">
-        <span class="stat-value">${pts(praise.currentPot)}</span>
-        <span class="stat-label">Current Jackpot</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-value">${pts(jackpotsWon)}</span>
-        <span class="stat-label">Jackpots won so far</span>
-      </div>
+      ${tile(allRate === null ? '—' : allRate + '%', 'Correct predictions')}
+      ${tile(pts(jackpotsWon), 'Jackpots won')}
+      ${tile(pts(praise.currentPot), 'Current Jackpot', ' highlight')}
     </div>`;
 
   el('praiseWeekly').innerHTML = praise.weekly.length ? `
