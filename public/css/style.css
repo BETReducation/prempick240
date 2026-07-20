@@ -2264,3 +2264,27 @@ input.score-input:disabled { opacity: 0.5; }
   .fixture-v      { font-size: 13px; }
   .fixture-row    { padding: 16px; }
 }
+
+/* ── Save bar and sticky-strip spacing fixes ─────────────────────────────── */
+
+/* Push the primary action to the right edge of the bar, away from the status
+   text sitting on the left. */
+#adminApp .save-bar .btn { margin-left: auto; }
+
+/* The bar is sticky-bottom, so give the panel room to breathe underneath. */
+#adminApp .admin-panel { padding-bottom: 8px; }
+
+@media (max-width: 720px) {
+  /* The gameweek strip is sticky with a drop shadow, and the fixture list
+     butts straight up against it — the first card's top edge was being
+     clipped. Give it clearance. */
+  #fixtureList { padding-top: 14px; }
+
+  /* Slightly smaller than the first pass: still a comfortable thumb target,
+     but no longer dominating the row. */
+  input.score-input {
+    width: 54px;
+    height: 46px;
+    font-size: 19px;
+  }
+}
