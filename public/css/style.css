@@ -2110,7 +2110,9 @@ footer span {
 #lockBanner,
 #fixturesApp .save-bar,
 #adminApp .save-bar,
-#praisePreview {
+#praisePreview,
+#gwTabs,
+#adminTabs {
   max-width: 760px;
   margin-left: auto;
   margin-right: auto;
@@ -2141,4 +2143,12 @@ footer span {
   #lockBanner, #fixturesApp .save-bar, #adminApp .save-bar, #praisePreview {
     max-width: none;
   }
+}
+
+/* The sticky tab wrapper's desktop padding (2rem) is declared after the mobile
+   block, so it wins at every width and leaves the tabs inset further than the
+   1rem used by .section on mobile. Re-assert the mobile padding here so the
+   tab, deadline banner and rows share a left edge on phones too. */
+@media (max-width: 720px) {
+  #gwTabsWrap { padding-left: 1rem; padding-right: 1rem; }
 }
