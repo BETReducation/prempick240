@@ -1969,7 +1969,7 @@ footer span {
 
 .admin-row {
   display: grid;
-  grid-template-columns: 46px 1fr auto 1fr 96px 84px 62px;
+  grid-template-columns: 46px minmax(0,1fr) 52px auto 52px minmax(0,1fr) 74px 58px;
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
@@ -2096,3 +2096,38 @@ footer span {
   white-space: nowrap;
 }
 .fixture-mypick.none { color: var(--muted); font-weight: 400; }
+
+/* ── Row width ───────────────────────────────────────────────────────────── */
+/* The fixture and admin rows sit in a 1100px section so the predictions table
+   has room. Left to fill it, the two score boxes get pushed to opposite ends
+   of the row with a large gap between them. Cap the rows themselves instead —
+   the wide table keeps the full width. */
+
+.fixture-grid,
+.admin-rows,
+.admin-bar,
+.admin-grid,
+#lockBanner,
+#fixturesApp .save-bar,
+#adminApp .save-bar,
+#praisePreview {
+  max-width: 840px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Slightly tighter team columns so the scores sit closer to the middle.
+   Scoped to desktop: these rules live after the mobile media queries, so
+   without the min-width guard they'd override the stacked mobile layout and
+   collide the team names with the score boxes. */
+@media (min-width: 721px) {
+  .fixture-row { grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px 52px 108px; }
+  .admin-row   { grid-template-columns: 46px minmax(0,1fr) 52px auto 52px minmax(0,1fr) 74px 58px; }
+}
+
+@media (max-width: 900px) {
+  .fixture-grid, .admin-rows, .admin-bar, .admin-grid,
+  #lockBanner, #fixturesApp .save-bar, #adminApp .save-bar, #praisePreview {
+    max-width: none;
+  }
+}
