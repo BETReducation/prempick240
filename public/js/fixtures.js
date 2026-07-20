@@ -7,7 +7,18 @@ let MY_PREDS   = {};     // matchId -> { home, away }
 let ACTIVE_GW  = null;   // gameweek id currently shown
 let DIRTY      = false;
 
-const COMP_LABEL = { PL: 'Premier League', CH: 'Championship' };
+const COMP_LABEL = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup tie' };
+
+// Fixtures in a week can span several days, so each row shows its own date.
+function fmtMatchDate(m) {
+  const iso = m.date || m.kickoff;
+  if (!iso) return '';
+  const d = new Date(m.date ? m.date + 'T12:00:00Z' : m.kickoff);
+  const opts = { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London' };
+  // Only show a time when we actually know one.
+  if (!m.date && m.kickoff) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
+  return d.toLocaleString('en-GB', opts);
+}
 
 function el(id) { return document.getElementById(id); }
 
@@ -107,6 +118,7 @@ function renderFixtures(gw) {
                    min="0" max="99" inputmode="numeric" value="${pred.away ?? ''}" ${editable ? '' : 'disabled'}>
           </div>
           <span class="fixture-team away">${m.away}</span>
+          <span class="fixture-date">${fmtMatchDate(m)}</span>
           <span class="fixture-actual">${scored ? `${result.home}–${result.away}` : ''}</span>
           ${outcome}
         </div>`;

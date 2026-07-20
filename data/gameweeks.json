@@ -30,49 +30,49 @@
       "id": "gw1",
       "number": 1,
       "label": "Gameweek 1",
-      "lockTime": "2026-08-15T14:00:00Z",
+      "lockTime": "2026-08-21T19:00:00Z",
       "matches": [
         {
           "id": "gw1-m1",
-          "comp": "PL",
+          "comp": "CUP",
           "home": "Arsenal",
-          "away": "Chelsea",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "away": "Coventry",
+          "date": "2026-08-21"
         },
         {
           "id": "gw1-m2",
           "comp": "PL",
-          "home": "Brighton",
-          "away": "Aston Villa",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "home": "Ipswich",
+          "away": "Sunderland",
+          "date": "2026-08-22"
         },
         {
           "id": "gw1-m3",
           "comp": "PL",
           "home": "Everton",
-          "away": "Newcastle",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "away": "Crystal Palace",
+          "date": "2026-08-22"
         },
         {
           "id": "gw1-m4",
-          "comp": "CH",
-          "home": "Leeds",
-          "away": "Norwich",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "comp": "PL",
+          "home": "Nottingham Forest",
+          "away": "Leeds",
+          "date": "2026-08-22"
         },
         {
           "id": "gw1-m5",
-          "comp": "CH",
-          "home": "Middlesbrough",
-          "away": "Coventry",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "comp": "PL",
+          "home": "Brighton",
+          "away": "Aston Villa",
+          "date": "2026-08-23"
         },
         {
           "id": "gw1-m6",
-          "comp": "CH",
-          "home": "West Brom",
-          "away": "Stoke",
-          "kickoff": "2026-08-15T14:00:00Z"
+          "comp": "PL",
+          "home": "Newcastle",
+          "away": "Liverpool",
+          "date": "2026-08-23"
         }
       ]
     }
