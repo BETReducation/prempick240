@@ -1,0 +1,81 @@
+{
+  "season": "2026/27",
+  "praise": {
+    "weeklyAllocation": 1,
+    "seasonEnd": [
+      {
+        "key": "league1st",
+        "label": "1st in the season table",
+        "percent": 40
+      },
+      {
+        "key": "league2nd",
+        "label": "2nd in the season table",
+        "percent": 25
+      },
+      {
+        "key": "league3rd",
+        "label": "3rd in the season table",
+        "percent": 15
+      },
+      {
+        "key": "mostExact",
+        "label": "Most exact scorelines",
+        "percent": 20
+      }
+    ]
+  },
+  "gameweeks": [
+    {
+      "id": "gw1",
+      "number": 1,
+      "label": "Gameweek 1",
+      "lockTime": "2026-08-15T14:00:00Z",
+      "praise": 1,
+      "matches": [
+        {
+          "id": "gw1-m1",
+          "comp": "PL",
+          "home": "Arsenal",
+          "away": "Chelsea",
+          "kickoff": "2026-08-15T14:00:00Z"
+        },
+        {
+          "id": "gw1-m2",
+          "comp": "PL",
+          "home": "Brighton",
+          "away": "Aston Villa",
+          "kickoff": "2026-08-15T14:00:00Z"
+        },
+        {
+          "id": "gw1-m3",
+          "comp": "PL",
+          "home": "Everton",
+          "away": "Newcastle",
+          "kickoff": "2026-08-15T14:00:00Z"
+        },
+        {
+          "id": "gw1-m4",
+          "comp": "CH",
+          "home": "Leeds",
+          "away": "Norwich",
+          "kickoff": "2026-08-15T14:00:00Z"
+        },
+        {
+          "id": "gw1-m5",
+          "comp": "CH",
+          "home": "Middlesbrough",
+          "away": "Coventry",
+          "kickoff": "2026-08-15T14:00:00Z"
+        },
+        {
+          "id": "gw1-m6",
+          "comp": "CH",
+          "home": "West Brom",
+          "away": "Stoke",
+          "kickoff": "2026-08-15T14:00:00Z"
+        }
+      ]
+    }
+  ]
+}

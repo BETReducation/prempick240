@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password · World Cup 2026</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html" class="nav-logo">WC26 <span>Prediction League</span></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="predictions.html">Group Predictions</a>
+    <a href="knockout.html">Knockout Predictions</a>
+    <a href="bracket.html">Bracket</a>
+    <a href="results.html">Results</a>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+  </div>
+</nav>
+
+<div class="section" style="max-width:480px;margin:0 auto;padding-top:60px;">
+
+  <div id="viewChecking" style="text-align:center;padding:40px 0;">
+    <div class="spinner"></div>
+    <p style="margin-top:12px;color:var(--muted);">Checking reset link…</p>
+  </div>
+
+  <div id="viewInvalid" style="display:none;text-align:center;padding:40px 0;">
+    <p style="font-size:48px;margin-bottom:16px;"><i class="fa-solid fa-circle-xmark" style="color:var(--red);"></i></p>
+    <h2 class="section-title" style="color:var(--red);">Link Expired</h2>
+    <p class="section-desc">This password reset link is invalid or has expired (links are valid for 1 hour).</p>
+    <a href="predictions.html" class="btn btn-primary" style="margin-top:16px;">Back to Sign In →</a>
+  </div>
+
+  <div id="viewForm" style="display:none;">
+    <p class="section-label">Account security</p>
+    <h2 class="section-title">Set New Password</h2>
+    <p class="section-desc">Choose a new password for your WC26 account. Must be at least 8 characters.</p>
+
+    <div class="card" style="margin-top:24px;">
+      <div class="error-msg hidden" id="resetError"></div>
+      <div class="form-group">
+        <label for="newPassword">New password</label>
+        <input type="password" id="newPassword" placeholder="Min. 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm new password</label>
+        <input type="password" id="confirmPassword" placeholder="Repeat your new password" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary btn-full" id="resetBtn">Set New Password →</button>
+    </div>
+  </div>
+
+  <div id="viewSuccess" style="display:none;text-align:center;padding:40px 0;">
+    <p style="font-size:48px;margin-bottom:16px;"><i class="fa-solid fa-circle-check" style="color:var(--accent);"></i></p>
+    <h2 class="section-title">Password Updated</h2>
+    <p class="section-desc">Your password has been changed. Sign in with your new password now.</p>
+    <a href="predictions.html" class="btn btn-primary" style="margin-top:16px;">Sign In →</a>
+  </div>
+
+</div>
+
+<footer>
+  <span>WC26 Prediction League</span>
+</footer>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  const html   = document.documentElement;
+  const saved  = localStorage.getItem('wc26_theme') || 'light';
+  html.dataset.theme = saved;
+  toggle.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  toggle.addEventListener('click', () => {
+    const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    localStorage.setItem('wc26_theme', next);
+    toggle.innerHTML = next === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  });
+</script>
+<script src="js/api.js"></script>
+<script>
+  const token = new URLSearchParams(location.search).get('token');
+
+  function show(id) {
+    ['viewChecking', 'viewInvalid', 'viewForm', 'viewSuccess'].forEach(v => {
+      document.getElementById(v).style.display = v === id ? '' : 'none';
+    });
+  }
+
+  // Validate token exists — we optimistically show the form; the server
+  // will reject an expired/invalid token on submit.
+  if (!token) {
+    show('viewInvalid');
+  } else {
+    show('viewForm');
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const pwd     = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    const errEl   = document.getElementById('resetError');
+
+    errEl.classList.add('hidden');
+
+    if (!pwd || pwd.length < 8) {
+      errEl.textContent = 'Password must be at least 8 characters.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (pwd !== confirm) {
+      errEl.textContent = 'Passwords do not match.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = document.getElementById('resetBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      await API.resetPassword(token, pwd);
+      show('viewSuccess');
+    } catch (e) {
+      let msg = 'Something went wrong. Please try again.';
+      try { msg = JSON.parse(e.message).error || msg; } catch {}
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+      btn.disabled    = false;
+      btn.textContent = 'Set New Password →';
+    }
+  });
+
+  document.getElementById('confirmPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('resetBtn').click();
+  });
+</script>
+</body>
+</html>

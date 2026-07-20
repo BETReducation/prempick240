@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixtures · PremPick240</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html" class="nav-logo">PremPick240 <span>Prediction League</span></a>
+  <div class="nav-links">
+    <a href="index.html" class="active">Fixtures</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="member.html" id="navMemberLink" class="nav-member-link" style="display:none;"></a>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Open menu">☰</button>
+  </div>
+</nav>
+
+<!-- Mobile nav drawer -->
+<div class="nav-drawer-overlay" id="navDrawerOverlay"></div>
+<nav class="nav-drawer" id="navDrawer" aria-label="Mobile navigation">
+  <div class="nav-drawer-head">
+    <a href="index.html" class="nav-drawer-logo">PremPick240</a>
+    <button class="nav-drawer-close" id="navDrawerClose" aria-label="Close menu">✕</button>
+  </div>
+  <div class="nav-drawer-links">
+    <a href="index.html">Fixtures</a>
+    <a href="ranking.html">Ranking</a>
+  </div>
+  <div class="nav-drawer-footer" id="navDrawerUser"></div>
+</nav>
+
+<!-- Registration modal -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal">
+
+    <div id="regSigninView">
+      <h2><i class="fa-regular fa-futbol"></i> Join the League</h2>
+      <p>Sign in with your email and password, or create a new account.</p>
+      <div id="registerError" class="error-msg hidden"></div>
+      <div class="form-group">
+        <label for="regName">Display name <span style="color:var(--muted);font-size:11px;">(new accounts only)</span></label>
+        <input type="text" id="regName" placeholder="e.g. Gary" maxlength="30" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="regEmail">Email address</label>
+        <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Password <span style="color:var(--muted);font-size:11px;">(min. 8 characters)</span></label>
+        <input type="password" id="regPassword" placeholder="Your password" autocomplete="current-password">
+        <small><a href="#" id="regForgotLink" style="color:var(--accent);">Forgot password?</a></small>
+      </div>
+      <div class="form-group">
+        <label for="regAccessCode">Invite code <span style="color:var(--muted);font-size:11px;">(new accounts only — leave blank to sign in)</span></label>
+        <input type="text" id="regAccessCode" placeholder="e.g. Robin Van Shearer" autocomplete="off">
+      </div>
+      <button class="btn btn-primary btn-full" id="registerBtn">Sign in / Sign up →</button>
+      <button class="btn btn-outline btn-full" id="browseBtn" style="margin-top:8px;">Browse without signing in</button>
+    </div>
+
+    <div id="regForgotView" style="display:none;">
+      <h2><i class="fa-solid fa-key"></i> Forgot Password</h2>
+      <p>Enter your email and we'll send a link to reset your password.</p>
+      <div id="regForgotError" class="error-msg hidden"></div>
+      <div id="regForgotSuccess" class="hidden" style="color:var(--accent);font-size:14px;margin-bottom:12px;padding:10px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-dim);">
+        <i class="fa-solid fa-circle-check"></i> Check your inbox — a reset link is on its way.
+      </div>
+      <div class="form-group" id="regForgotEmailGroup">
+        <label for="regForgotEmail">Email address</label>
+        <input type="email" id="regForgotEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <button class="btn btn-primary btn-full" id="regForgotSubmit">Send reset link →</button>
+      <button class="btn btn-outline btn-full" id="regForgotBack" style="margin-top:8px;">← Back to sign in</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="loading-state" id="loadingState">
+  <div class="spinner"></div>
+  <p>Loading fixtures…</p>
+</div>
+
+<div id="fixturesApp" style="display:none;">
+
+  <div class="section section--no-bottom">
+    <p class="section-label" id="gwLabel">This Week</p>
+    <h2 class="section-title">Six to Call</h2>
+    <p class="section-desc">Six tough fixtures from the Premier League and Championship. Predict a score for each — <strong>1 point</strong> for the right result, and a separate point for the exact scoreline. Call all six results correctly and you take a share of the week's praise.</p>
+  </div>
+
+  <div id="gwTabsWrap">
+    <div class="tab-bar" id="gwTabs"></div>
+  </div>
+
+  <div class="section section--flush section--wide">
+    <div id="lockBanner"></div>
+    <div id="fixtureList"></div>
+
+    <div class="save-bar" id="saveBar">
+      <span id="playerName" style="display:none;"></span>
+      <div class="save-bar-left">
+        <button class="btn btn-danger btn-sm" id="clearBtn" style="display:none;">Clear Week</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="saveBtn">Save Predictions</button>
+      <span class="save-status" id="saveStatus"></span>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>PremPick240 Prediction League</span>
+  <span id="footerLock">Predictions lock at the first kick-off each week</span>
+</footer>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  const html = document.documentElement;
+  const saved = localStorage.getItem('pp240_theme') || 'light';
+  html.dataset.theme = saved;
+  toggle.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  toggle.addEventListener('click', () => {
+    const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    localStorage.setItem('pp240_theme', next);
+    toggle.innerHTML = next === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  });
+</script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/fixtures.js"></script>
+</body>
+</html>

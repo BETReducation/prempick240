@@ -1,0 +1,10 @@
+node_modules/
+data/predictions.json
+data/results.json
+data/access-codes.json
+data/sessions.json
+data/leaderboard-prev.json
+*.pdf
+.DS_Store
+*.docx
+~$*
