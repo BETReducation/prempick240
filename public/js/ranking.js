@@ -41,24 +41,23 @@ function renderTable(board, gws, meId) {
     </tbody>`;
 }
 
-function renderPraise(praise) {
+function renderPraise(praise, board) {
+  // Correct results called across the whole league this season.
+  const correct = (board || []).reduce((n, p) => n + p.resultPoints, 0);
+
   el('praiseSummary').innerHTML = `
     <div class="stat-row">
       <div class="stat-tile highlight">
-        <span class="stat-value">${pts(praise.currentPot)}</span>
-        <span class="stat-label">On offer this week</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-value">${pts(praise.totalPot)}</span>
-        <span class="stat-label">Total season pot</span>
+        <span class="stat-value">${pts(praise.remaining)}</span>
+        <span class="stat-label">Current Jackpot</span>
       </div>
       <div class="stat-tile">
         <span class="stat-value">${pts(praise.claimed)}</span>
-        <span class="stat-label">Won so far</span>
+        <span class="stat-label">Jackpot won so far</span>
       </div>
       <div class="stat-tile">
-        <span class="stat-value">${pts(praise.remaining)}</span>
-        <span class="stat-label">Left in the pot</span>
+        <span class="stat-value">${pts(correct)}</span>
+        <span class="stat-label">Correct predictions</span>
       </div>
     </div>`;
 
@@ -91,7 +90,7 @@ async function init() {
 
     el('seasonLabel').textContent = gws.season ? `Season ${gws.season}` : 'Season';
     renderTable(board, gws, userId);
-    renderPraise(praise);
+    renderPraise(praise, board);
 
     el('loadingState').style.display = 'none';
     el('rankingApp').style.display   = '';
