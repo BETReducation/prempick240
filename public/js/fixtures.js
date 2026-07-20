@@ -266,8 +266,18 @@ function render() {
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 async function save() {
+  // Close the on-screen keyboard first. On iOS a sticky bottom bar can sit
+  // behind the keyboard, and the status message below is hidden by it — so
+  // the save looks like it did nothing even when it worked.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
   const { userId } = Session.load();
-  if (!userId) return;
+  if (!userId) {
+    const st = el('saveStatus');
+    st.textContent = 'You are signed out — sign in again to save.';
+    st.className = 'save-status err';
+    return;
+  }
 
   const gw = GW_DATA.gameweeks.find(g => g.id === ACTIVE_GW);
   const payload = {};
@@ -285,10 +295,11 @@ async function save() {
     el('saveBtn').disabled = true;
     const r = await API.savePredictions(userId, payload, [gw.id]);
     DIRTY = false;
+    const n = Object.keys(payload).length;
     status.textContent = incomplete
-      ? `Saved — ${incomplete} fixture${incomplete > 1 ? 's' : ''} still incomplete.`
-      : `Saved all ${Object.keys(payload).length} predictions.`;
-    status.className = 'save-status ' + (incomplete ? 'warn' : 'ok');
+      ? `Saved ${n} — ${incomplete} fixture${incomplete > 1 ? 's' : ''} still need both scores.`
+      : (n ? `Saved all ${n} predictions.` : 'Nothing to save — enter both scores for a fixture.');
+    status.className = 'save-status ' + (incomplete || !n ? 'warn' : 'ok');
     if (r.rejected) status.textContent += ` (${r.rejected} rejected — deadline passed)`;
   } catch (e) {
     status.textContent = 'Could not save — ' + (e.message || 'try again');

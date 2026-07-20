@@ -2288,3 +2288,25 @@ input.score-input:disabled { opacity: 0.5; }
     font-size: 19px;
   }
 }
+
+/* ── Touch reliability ───────────────────────────────────────────────────── */
+/* Removes the tap delay some mobile browsers apply while they wait to see if
+   a tap is a double-tap-to-zoom. Without it a single tap on Save can be
+   swallowed. */
+.btn, .tab-btn, input.score-input, .theme-toggle, .nav-hamburger {
+  touch-action: manipulation;
+}
+
+@media (max-width: 720px) {
+  /* Keep the sticky bar clear of the iPhone home indicator, and give the
+     status message room so it isn't hidden under the bar. */
+  #fixturesApp .save-bar {
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    flex-wrap: wrap;
+  }
+  #fixturesApp .save-bar .save-status {
+    flex: 1 1 100%;
+    order: -1;
+    font-size: 12px;
+  }
+}
