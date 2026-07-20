@@ -2152,3 +2152,29 @@ footer span {
 @media (max-width: 720px) {
   #gwTabsWrap { padding-left: 1rem; padding-right: 1rem; }
 }
+
+/* ── Score inputs: no spinners ───────────────────────────────────────────── */
+/* type="number" keeps the numeric keypad on mobile, but the desktop stepper
+   arrows are noise for a 0–9 scoreline and easy to nudge by accident. */
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.score-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Intro blocks align with the content below ───────────────────────────── */
+/* .section is 760px wide *including* its 2rem padding, while the rows below
+   are capped at 760px of actual content. Widen the intro by that padding so
+   both start on the same left edge. */
+@media (min-width: 721px) {
+  #fixturesApp > .section,
+  #rankingApp  > .section,
+  #adminApp    > .section {
+    max-width: calc(760px + 4rem);
+  }
+}

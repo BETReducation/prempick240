@@ -60,11 +60,7 @@ function renderPraise(praise) {
         <span class="stat-value">${pts(praise.remaining)}</span>
         <span class="stat-label">Left in the pot</span>
       </div>
-    </div>
-    <p class="section-note">${pts(praise.playerCount)} registered
-      &times; ${praise.seasonWeeks} weeks = ${pts(praise.totalPot)} praise for the season,
-      so a standard week is worth ${pts(praise.weeklyBase)}. Weeks nobody wins add to the next
-      week&rsquo;s pot rather than being lost.</p>`;
+    </div>`;
 
   el('praiseWeekly').innerHTML = praise.weekly.length ? `
     <div class="praise-list">
@@ -84,20 +80,6 @@ function renderPraise(praise) {
         </div>`).join('')}
     </div>` : '<p class="empty">No completed gameweeks yet.</p>';
 
-  el('praiseSeasonEnd').innerHTML = `
-    <div class="praise-list">
-      ${praise.seasonEnd.map(s => `
-        <div class="praise-row">
-          <span class="praise-gw">${esc(s.label)} <span class="muted">(${s.percent}%)</span></span>
-          <span class="praise-winners">
-            ${s.leaders.length
-              ? s.leaders.map(x => `<span class="winner-chip">${esc(x.displayName || x.name)}</span>`).join('')
-              : '<span class="muted">To be decided</span>'}
-          </span>
-          <span class="praise-amount">${pts(s.praise)}</span>
-        </div>`).join('')}
-    </div>
-    <p class="section-note">Season-end praise is drawn from the ${pts(praise.remaining)} still left in the pot, so these figures move every week.</p>`;
 }
 
 async function init() {

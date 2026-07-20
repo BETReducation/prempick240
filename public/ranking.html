@@ -46,7 +46,7 @@
   <div class="section section--no-bottom">
     <p class="section-label" id="seasonLabel">Season</p>
     <h2 class="section-title">The Table</h2>
-    <p class="section-desc">Ranked on <strong>results</strong> called correctly. <strong>Exact</strong> scorelines are tracked separately — they break ties and decide their own end-of-season praise.</p>
+    <p class="section-desc">Ranked on <strong>results</strong> called correctly. <strong>Exact</strong> scorelines are tracked separately and break any tie.</p>
   </div>
 
   <div class="section section--flush section--wide">
@@ -58,14 +58,15 @@
   <div class="section section--no-bottom">
     <p class="section-label">Bragging Rights</p>
     <h2 class="section-title">Praise</h2>
-    <p class="section-desc">Call all six results in a week and you share that week's praise. Weeks nobody wins roll their praise into the end-of-season pot.</p>
+    <p class="section-desc">Call all six results in a week and you share that week's praise. Weeks nobody wins roll their praise into the following week.</p>
   </div>
 
+  <!-- End-of-season split is deliberately not shown: the weekly pot is what
+       players care about. Re-introduce nearer April — /api/praise still
+       returns seasonEnd, so it's a display change only. -->
   <div class="section section--flush section--wide">
     <div class="praise-summary" id="praiseSummary"></div>
     <div id="praiseWeekly"></div>
-    <h3 class="subsection-title">End of season</h3>
-    <div id="praiseSeasonEnd"></div>
   </div>
 
 </div>
