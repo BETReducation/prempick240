@@ -42,22 +42,35 @@ function renderTable(board, gws, meId) {
 }
 
 function renderPraise(praise, board) {
-  // Correct results called across the whole league this season.
-  const correct = (board || []).reduce((n, p) => n + p.resultPoints, 0);
+  // Across the league: how many results have been called right, out of every
+  // prediction made on a fixture that has since been played.
+  let correct = 0, predicted = 0;
+  (board || []).forEach(p => {
+    correct += p.resultPoints;
+    predicted += Object.values(p.matchPoints || {}).filter(m => m.predicted).length;
+  });
+  const rate = predicted ? Math.round((correct / predicted) * 100) : null;
+
+  // Weeks where somebody actually called all six.
+  const jackpotsWon = praise.weekly.filter(w => !w.rolledOver).length;
 
   el('praiseSummary').innerHTML = `
     <div class="stat-row">
-      <div class="stat-tile highlight">
-        <span class="stat-value">${pts(praise.remaining)}</span>
-        <span class="stat-label">Current Jackpot</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-value">${pts(praise.claimed)}</span>
-        <span class="stat-label">Jackpot won so far</span>
-      </div>
       <div class="stat-tile">
         <span class="stat-value">${pts(correct)}</span>
         <span class="stat-label">Correct predictions</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-value">${rate === null ? '—' : rate + '%'}</span>
+        <span class="stat-label">Success rate</span>
+      </div>
+      <div class="stat-tile highlight">
+        <span class="stat-value">${pts(praise.currentPot)}</span>
+        <span class="stat-label">Current Jackpot</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-value">${pts(jackpotsWon)}</span>
+        <span class="stat-label">Jackpots won so far</span>
       </div>
     </div>`;
 
