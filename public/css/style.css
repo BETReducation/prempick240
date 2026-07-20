@@ -2319,3 +2319,23 @@ input.score-input:disabled { opacity: 0.5; }
   transform: scale(1.02);
   transition: transform 0.15s;
 }
+
+/* ── Gameweek strip breathing room ───────────────────────────────────────── */
+/* The desktop #gwTabsWrap rule sets `padding: 0 2rem 0`, so the tab button's
+   top edge sat flush against the strip's boundary while the bottom had space
+   from sibling margins. Give it even vertical padding at both breakpoints. */
+#gwTabsWrap {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 720px) {
+  #gwTabsWrap { padding-top: 12px; padding-bottom: 12px; }
+  .gw-strip { align-items: center; }
+}
+
+/* The tab bar carries a 6px bottom padding (scrollbar clearance from the WC26
+   layout). Inside the strip that made the bar taller than the button in it, so
+   the button sat flush against the top with dead space underneath — which read
+   as uneven padding. */
+.gw-strip .tab-bar { padding-bottom: 0; }
