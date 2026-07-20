@@ -950,21 +950,9 @@ nav.site-nav {
 }
 
 /* ── Admin panel ─────────────────────────────────────────────────────────── */
-.admin-panel {
-  background: var(--gold-dim);
-  border: 1px solid rgba(240,197,0,0.2);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-.admin-panel h4 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
+/* WC26 used .admin-panel for a small gold-tinted box. Here it's a full-width
+   page section, so it carries no background or border of its own — the rows
+   and bars inside provide the structure. */
 /* ── Tie Breaker team select ─────────────────────────────────────────────── */
 .tb-select {
   width: 100%;
