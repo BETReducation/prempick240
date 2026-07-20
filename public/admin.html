@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · PremPick240</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html" class="nav-logo">PremPick240 <span>Prediction League</span></a>
+  <div class="nav-links">
+    <a href="index.html">Fixtures</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="member.html" id="navMemberLink" class="nav-member-link" style="display:none;"></a>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Open menu">☰</button>
+  </div>
+</nav>
+
+<div class="nav-drawer-overlay" id="navDrawerOverlay"></div>
+<nav class="nav-drawer" id="navDrawer" aria-label="Mobile navigation">
+  <div class="nav-drawer-head">
+    <a href="index.html" class="nav-drawer-logo">PremPick240</a>
+    <button class="nav-drawer-close" id="navDrawerClose" aria-label="Close menu">✕</button>
+  </div>
+  <div class="nav-drawer-links">
+    <a href="index.html">Fixtures</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="admin.html">Admin</a>
+  </div>
+  <div class="nav-drawer-footer" id="navDrawerUser"></div>
+</nav>
+
+<!-- Shown when the visitor isn't an admin -->
+<div class="section" id="adminDenied" style="display:none;">
+  <p class="section-label">Restricted</p>
+  <h2 class="section-title">Admin only</h2>
+  <p class="section-desc">You need to be signed in as an admin to manage fixtures and results.</p>
+  <div class="form-group" style="max-width:320px;">
+    <label for="adminPw">Admin password</label>
+    <input type="password" id="adminPw" placeholder="Admin password" autocomplete="off">
+    <small>Or sign in with your admin account from the Fixtures page.</small>
+  </div>
+  <button class="btn btn-primary" id="adminPwBtn">Unlock →</button>
+  <p id="adminPwError" class="error-msg hidden" style="margin-top:10px;"></p>
+</div>
+
+<div class="loading-state" id="loadingState">
+  <div class="spinner"></div>
+  <p>Checking access…</p>
+</div>
+
+<div id="adminApp" style="display:none;">
+
+  <div class="section section--no-bottom">
+    <p class="section-label">Admin</p>
+    <h2 class="section-title">Run the League</h2>
+    <p class="section-desc">Publish each week's six fixtures, then enter results as they come in.</p>
+  </div>
+
+  <div id="gwTabsWrap">
+    <div class="tab-bar" id="adminTabs">
+      <button class="tab-btn active" data-panel="results">Results</button>
+      <button class="tab-btn" data-panel="fixtures">Fixtures</button>
+    </div>
+  </div>
+
+  <!-- ── Results ────────────────────────────────────────────────────────── -->
+  <div class="section section--flush section--wide admin-panel" id="panel-results">
+    <div class="admin-bar">
+      <label for="resultGw">Gameweek</label>
+      <select id="resultGw"></select>
+      <span class="admin-hint" id="resultGwHint"></span>
+    </div>
+    <div id="resultRows"></div>
+    <div class="save-bar">
+      <span class="save-status" id="resultStatus"></span>
+      <button class="btn btn-primary btn-sm" id="saveResultsBtn">Save Results</button>
+    </div>
+    <div id="praisePreview"></div>
+  </div>
+
+  <!-- ── Fixtures ───────────────────────────────────────────────────────── -->
+  <div class="section section--flush section--wide admin-panel" id="panel-fixtures" style="display:none;">
+    <div class="admin-bar">
+      <label for="editGw">Editing</label>
+      <select id="editGw"></select>
+      <button class="btn btn-outline btn-sm" id="newGwBtn">+ New gameweek</button>
+      <button class="btn btn-danger btn-sm" id="deleteGwBtn">Delete</button>
+    </div>
+
+    <div class="admin-grid">
+      <div class="form-group">
+        <label for="gwNumber">Week number</label>
+        <input type="number" id="gwNumber" min="1" step="1">
+      </div>
+      <div class="form-group">
+        <label for="gwLabel">Label</label>
+        <input type="text" id="gwLabel" maxlength="60" placeholder="Gameweek 2">
+      </div>
+      <div class="form-group">
+        <label for="gwDeadline">Prediction deadline <span style="color:var(--muted);font-size:11px;">(UK time)</span></label>
+        <input type="datetime-local" id="gwDeadline">
+        <small id="gwDeadlineEcho"></small>
+      </div>
+    </div>
+
+    <p class="subsection-title">The six fixtures</p>
+    <div id="fixtureRows"></div>
+
+    <div class="save-bar">
+      <span class="save-status" id="fixtureStatus"></span>
+      <button class="btn btn-primary btn-sm" id="saveGwBtn">Save Gameweek</button>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>PremPick240 Prediction League</span>
+  <span>Admin</span>
+</footer>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  const html = document.documentElement;
+  const saved = localStorage.getItem('pp240_theme') || 'light';
+  html.dataset.theme = saved;
+  toggle.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  toggle.addEventListener('click', () => {
+    const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    localStorage.setItem('pp240_theme', next);
+    toggle.innerHTML = next === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  });
+</script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

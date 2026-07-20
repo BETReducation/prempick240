@@ -23,6 +23,7 @@ design system, different domain model.
 | `public/index.html` | **Fixtures** — the front page. This week's six fixtures + prediction entry. Past weeks via tabs. |
 | `public/ranking.html` | **Ranking** — season table + praise ledger |
 | `public/member.html` | Player profile (display name, bio, avatar, stats) |
+| `public/admin.html` | **Admin** — publish a week's fixtures, enter results. Linked in the nav for admin accounts only. |
 | `public/reset.html` | Password reset landing page (email token) |
 
 Login is a modal injected by `public/js/auth.js`, present on every page — same
@@ -48,8 +49,10 @@ flow as WC26 (email + password, invite code required for new accounts).
       // Only add one to deliberately override that.
       "matches": [
         { "id": "gw1-m1", "comp": "PL", "home": "Arsenal", "away": "Chelsea",
-          "kickoff": "2026-08-15T14:00:00Z" }
-        // …six of them, comp is "PL" or "CH"
+          "date": "2026-08-15" }
+        // …six of them. comp is "PL", "CH" or "CUP".
+        // `date` is display-only (fixtures can span Fri–Sun); locking is driven
+        // by the gameweek's lockTime, or an optional per-match lockTime.
       ]
     }
   ]
@@ -108,6 +111,22 @@ A gameweek may carry an explicit `praise` field to override its allocation.
 Don't set it to 0 by accident — that pins the week's value and stops it
 tracking the player count.
 
+## Admin page
+
+`public/admin.html` + `js/admin.js`. Two panels:
+
+- **Results** — pick a gameweek, type scores, save. Partial entry is fine; praise
+  is only awarded once all six have results. Shows who won the week's praise as
+  soon as the last result lands.
+- **Fixtures** — create or edit a gameweek: number, label, deadline and six
+  fixtures. The deadline input is **UK wall-clock**, converted to UTC on save by
+  `ukLocalToUtcISO()`, which iterates against `Europe/London` rather than
+  trusting the browser's zone. Verified across BST, GMT and both clock-change
+  days — the season spans the October change, so this matters.
+
+Auth: `requireAdmin` accepts an admin user's session token, so a signed-in admin
+needs no password. The password box is a fallback and stores to `sessionStorage`.
+
 ## Prediction locking
 
 Locking is per gameweek via `lockTime`. A single match may carry its own
@@ -117,6 +136,11 @@ reflects it.
 
 Before a week locks, `/api/predictions` **omits** other players' picks for that
 week. Don't remove that filter; it's what stops players copying each other.
+
+Once a week locks, the Fixtures page renders an "Everyone's predictions" grid
+below the fixtures, colour-coded against the actual results. The score inputs
+are replaced by the player's own pick as text — disabled empty boxes on a locked
+week just read as broken.
 
 ## Saving predictions — the `scope` contract
 
@@ -166,6 +190,9 @@ redeploys.
 - Score inputs are integers 0–99, validated server-side.
 - `parseInt(x) || fallback` is a trap where 0 is valid (gameweek numbers,
   scores) — use `Number.isInteger` / explicit `isNaN` checks.
+- `POST /api/admin/gameweeks` rebuilds each match object, so any field it
+  doesn't explicitly copy is destroyed on save. It silently wiped every
+  fixture's `date` once. If you add a per-match field, add it there too.
 
 ## Carried over but unused
 

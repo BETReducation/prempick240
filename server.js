@@ -533,7 +533,11 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
       comp:    sanitise(m.comp || 'PL', 4),
       home:    sanitise(m.home, 60),
       away:    sanitise(m.away, 60),
-      kickoff: m.kickoff || lockTime || null,
+      // Preserve `date` and only keep a `kickoff` that was actually supplied.
+      // Defaulting kickoff to the week's lockTime used to overwrite the real
+      // fixture dates on every save.
+      ...(m.date    ? { date:     sanitise(m.date, 10) } : {}),
+      ...(m.kickoff ? { kickoff:  m.kickoff }            : {}),
       ...(m.lockTime ? { lockTime: m.lockTime } : {})
     };
   });

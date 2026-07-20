@@ -65,6 +65,19 @@ document.addEventListener('DOMContentLoaded', () => {
     link.href          = 'member.html?id=' + userId;
     link.style.display = 'flex';
 
+    // Admin link — only rendered for admin accounts.
+    API.me().then(me => {
+      if (!me || !me.isAdmin) return;
+      if (!document.getElementById('navAdminLink')) {
+        const a = document.createElement('a');
+        a.id = 'navAdminLink';
+        a.href = 'admin.html';
+        a.innerHTML = '<i class="fa-solid fa-sliders"></i> Admin';
+        if (location.pathname.endsWith('admin.html')) a.className = 'active';
+        link.insertAdjacentElement('beforebegin', a);
+      }
+    }).catch(() => {});
+
     const logoutBtn = document.createElement('button');
     logoutBtn.textContent      = 'Log out';
     logoutBtn.className        = 'btn btn-outline btn-sm';

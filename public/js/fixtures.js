@@ -6,6 +6,7 @@ let RESULTS    = {};     // matchId -> { home, away, played }
 let MY_PREDS   = {};     // matchId -> { home, away }
 let ACTIVE_GW  = null;   // gameweek id currently shown
 let DIRTY      = false;
+let ALL_PREDS  = [];     // every player's predictions — server only exposes locked weeks
 
 const COMP_LABEL = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup tie' };
 
@@ -111,11 +112,17 @@ function renderFixtures(gw) {
           <span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>
           <span class="fixture-team home">${m.home}</span>
           <div class="fixture-scores">
-            <input type="number" class="score-input" data-match="${m.id}" data-side="home"
-                   min="0" max="99" inputmode="numeric" value="${pred.home ?? ''}" ${editable ? '' : 'disabled'}>
-            <span class="fixture-v">v</span>
-            <input type="number" class="score-input" data-match="${m.id}" data-side="away"
-                   min="0" max="99" inputmode="numeric" value="${pred.away ?? ''}" ${editable ? '' : 'disabled'}>
+            ${editable ? `
+              <input type="number" class="score-input" data-match="${m.id}" data-side="home"
+                     min="0" max="99" inputmode="numeric" value="${pred.home ?? ''}">
+              <span class="fixture-v">v</span>
+              <input type="number" class="score-input" data-match="${m.id}" data-side="away"
+                     min="0" max="99" inputmode="numeric" value="${pred.away ?? ''}">
+            ` : `
+              <span class="fixture-mypick${pred.home == null ? ' none' : ''}">${
+                pred.home == null ? '—' : `${pred.home}–${pred.away}`
+              }</span>
+            `}
           </div>
           <span class="fixture-team away">${m.away}</span>
           <span class="fixture-date">${fmtMatchDate(m)}</span>
@@ -139,6 +146,94 @@ function renderFixtures(gw) {
   // Save controls only make sense on an open week for a signed-in player.
   el('saveBar').style.display  = editable ? '' : 'none';
   el('clearBtn').style.display = editable ? '' : 'none';
+
+  renderEveryonesPredictions(gw);
+}
+
+// Once a week locks, everyone's picks become public — that's half the fun.
+// Before the lock the server withholds them, so there's nothing to show.
+function renderEveryonesPredictions(gw) {
+  const box = el('allPreds');
+  if (!box) return;
+
+  if (!gw.locked) {
+    box.innerHTML = '';
+    return;
+  }
+
+  // Only players who actually entered something for this week.
+  const rows = ALL_PREDS
+    .map(p => ({ ...p, picks: gw.matches.map(m => p.predictions[m.id]) }))
+    .filter(p => p.picks.some(Boolean));
+
+  if (!rows.length) {
+    box.innerHTML = '<p class="empty">Nobody entered predictions for this week.</p>';
+    return;
+  }
+
+  const { userId } = Session.load();
+
+  // Rank by results called right, so the table doubles as the week's scoreboard.
+  rows.forEach(p => {
+    p.correct = gw.matches.reduce((n, m, i) => {
+      const r = RESULTS[m.id], pr = p.picks[i];
+      if (!r || !r.played || !pr) return n;
+      return n + (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away) ? 1 : 0);
+    }, 0);
+    p.exact = gw.matches.reduce((n, m, i) => {
+      const r = RESULTS[m.id], pr = p.picks[i];
+      if (!r || !r.played || !pr) return n;
+      return n + (pr.home === r.home && pr.away === r.away ? 1 : 0);
+    }, 0);
+  });
+  rows.sort((a, b) => b.correct - a.correct || b.exact - a.exact || a.name.localeCompare(b.name));
+
+  const anyResults = gw.matches.some(m => RESULTS[m.id]?.played);
+
+  box.innerHTML = `
+    <h3 class="subsection-title">Everyone's predictions</h3>
+    <div class="table-wrap">
+      <table class="preds-table">
+        <thead>
+          <tr>
+            <th class="col-player">Player</th>
+            ${gw.matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
+            ${anyResults ? '<th class="col-pts">Results</th><th class="col-pts">Exact</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(p => `
+            <tr class="${p.id === userId ? 'is-me' : ''}">
+              <td class="col-player">${esc(p.displayName || p.name)}</td>
+              ${gw.matches.map((m, i) => {
+                const pr = p.picks[i], r = RESULTS[m.id];
+                if (!pr) return '<td class="col-fx muted">—</td>';
+                let cls = '';
+                if (r && r.played) {
+                  const right = Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away);
+                  const exact = pr.home === r.home && pr.away === r.away;
+                  cls = exact ? ' exact' : (right ? ' hit' : ' miss');
+                }
+                return `<td class="col-fx${cls}">${pr.home}–${pr.away}</td>`;
+              }).join('')}
+              ${anyResults ? `<td class="col-pts strong">${p.correct}</td><td class="col-pts">${p.exact}</td>` : ''}
+            </tr>`).join('')}
+          ${anyResults ? `
+            <tr class="actual-row">
+              <td class="col-player">Actual</td>
+              ${gw.matches.map(m => {
+                const r = RESULTS[m.id];
+                return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
+              }).join('')}
+              <td class="col-pts"></td><td class="col-pts"></td>
+            </tr>` : ''}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 }
 
 function render() {
@@ -197,9 +292,12 @@ function clearWeek() {
 
 async function init() {
   try {
-    const [gws, results] = await Promise.all([API.gameweeks(), API.results()]);
+    const [gws, results, all] = await Promise.all([
+      API.gameweeks(), API.results(), API.allPredictions().catch(() => [])
+    ]);
     GW_DATA = gws;
     RESULTS = results.results || {};
+    ALL_PREDS = all || [];
 
     if (!GW_DATA.gameweeks.length) {
       el('loadingState').innerHTML = '<p>No gameweeks published yet. Check back soon.</p>';
