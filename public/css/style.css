@@ -2335,3 +2335,72 @@ input.score-input:disabled { opacity: 0.5; }
 #praiseSummary .subsection-title { margin-top: 1.25rem; }
 #praiseSummary .subsection-title:first-child { margin-top: 0; }
 #praiseSummary .stat-row { margin-bottom: 0; }
+
+/* ── Logo page ───────────────────────────────────────────────────────────── */
+
+.logo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;   /* the banner is shorter than the squares */
+  gap: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.logo-card {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.logo-card canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.logo-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+.logo-card-name {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+}
+.logo-card-note {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.logo-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.logo-controls label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.logo-controls select {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text);
+}

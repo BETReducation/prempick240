@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const a = document.createElement('a');
         a.id = 'navAdminLink';
         a.href = 'admin.html';
-        a.innerHTML = '<i class="fa-solid fa-sliders"></i> Admin';
+        a.textContent = 'Admin';
         if (onAdmin) a.className = 'active';
         link.insertAdjacentElement('beforebegin', a);
       }
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = document.createElement('a');
         d.id = 'drawerAdminLink';
         d.href = 'admin.html';
-        d.innerHTML = '<i class="fa-solid fa-sliders"></i> Admin';
+        d.textContent = 'Admin';
         if (onAdmin) d.className = 'active';
         d.addEventListener('click', closeDrawer);
         drawerLinks.appendChild(d);

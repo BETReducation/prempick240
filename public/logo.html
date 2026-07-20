@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo · PremPick240</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html" class="nav-logo">PremPick240 <span>Prediction League</span></a>
+  <div class="nav-links">
+    <a href="index.html">Predictions</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="member.html" id="navMemberLink" class="nav-member-link" style="display:none;"></a>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Open menu">☰</button>
+  </div>
+</nav>
+
+<div class="nav-drawer-overlay" id="navDrawerOverlay"></div>
+<nav class="nav-drawer" id="navDrawer" aria-label="Mobile navigation">
+  <div class="nav-drawer-head">
+    <a href="index.html" class="nav-drawer-logo">PremPick240</a>
+    <button class="nav-drawer-close" id="navDrawerClose" aria-label="Close menu">✕</button>
+  </div>
+  <div class="nav-drawer-links">
+    <a href="index.html">Predictions</a>
+    <a href="ranking.html">Ranking</a>
+  </div>
+  <div class="nav-drawer-footer" id="navDrawerUser"></div>
+</nav>
+
+<div class="section section--no-bottom">
+  <p class="section-label">Brand</p>
+  <h2 class="section-title">Logo</h2>
+  <p class="section-desc">Black background, green type — the same treatment as the World Cup badge. Pick a shape, choose a size, and download a PNG with a transparent-free solid background, ready for a profile picture or post.</p>
+</div>
+
+<div class="section section--flush section--wide">
+  <div class="logo-grid" id="logoGrid"></div>
+
+  <div class="logo-controls">
+    <label for="logoSize">PNG size</label>
+    <select id="logoSize">
+      <option value="512">512 px</option>
+      <option value="1024" selected>1024 px</option>
+      <option value="2048">2048 px</option>
+    </select>
+    <label for="logoBg">Background</label>
+    <select id="logoBg">
+      <option value="#0b0f1a" selected>Off-black (site dark)</option>
+      <option value="#000000">Pure black</option>
+    </select>
+    <span class="admin-hint">Squares are sized for avatars; the banner suits a header or link preview.</span>
+  </div>
+</div>
+
+<footer>
+  <span>PremPick240 Prediction League</span>
+  <span>Logo assets</span>
+</footer>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  const html = document.documentElement;
+  const saved = localStorage.getItem('pp240_theme') || 'light';
+  html.dataset.theme = saved;
+  toggle.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  toggle.addEventListener('click', () => {
+    const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    localStorage.setItem('pp240_theme', next);
+    toggle.innerHTML = next === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
+  });
+</script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/logo.js"></script>
+</body>
+</html>
