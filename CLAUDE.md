@@ -197,12 +197,22 @@ project with its own volume** — do not point it at the WC26 deployment.
 Set `PERSISTENT_DATA_DIR` to the mounted volume so runtime JSON survives
 redeploys.
 
-## Watch out: data/gameweeks.json is written by the admin API
+## data/gameweeks.json is a seed, not the live file
 
-Local testing through `/api/admin/gameweeks` rewrites this tracked file, so it
-picks up test lock times and fixtures. It has been committed by accident once,
-which locked Gameweek 1 on the live site. **Check `git diff data/gameweeks.json`
-before every commit** — restore it deliberately rather than assuming it is clean.
+In production the live gameweeks file lives on the Railway volume
+(`$PERSISTENT_DATA_DIR/gameweeks.json`). `data/gameweeks.json` in the repo is
+only copied across on a **first** boot when the volume has no copy yet
+(`seedGameweeks()`).
+
+Consequences:
+
+- Weeks published through the admin page survive deploys. Before this change
+  they were wiped by the next push, because the file shipped in the code image.
+- **Editing `data/gameweeks.json` and pushing no longer changes production.**
+  The admin page is the way to publish a week.
+- Locally the two paths are the same file, so admin edits still write to the
+  repo copy. **Check `git diff data/gameweeks.json` before committing** — a test
+  lock time reached production this way once and locked Gameweek 1.
 
 ## Key conventions
 

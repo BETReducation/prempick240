@@ -1875,50 +1875,6 @@ footer span {
   .praise-winners { grid-area: winners; }
 }
 
-/* ── Praise strip (site-wide, under the nav) ─────────────────────────────── */
-
-.praise-strip {
-  position: sticky;
-  top: 56px;
-  z-index: 150;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.praise-strip-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px 28px;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 9px 2rem;
-  text-decoration: none;
-  color: var(--muted);
-  font-size: 12px;
-}
-.praise-strip-inner:hover .praise-strip-item.primary strong { color: var(--accent); }
-
-.praise-strip-item { display: inline-flex; align-items: baseline; gap: 6px; }
-.praise-strip-item strong {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-.praise-strip-item.primary strong { color: var(--gold); font-size: 15px; }
-.praise-strip-item.primary i { color: var(--gold); align-self: center; }
-.praise-strip-label { letter-spacing: 0.02em; }
-
-/* The fixtures page has its own sticky tab bar — push it below the strip. */
-.praise-strip ~ #gwTabsWrap { top: 94px; }
-
-@media (max-width: 720px) {
-  .praise-strip-inner { gap: 4px 16px; padding: 8px 12px; font-size: 11px; }
-  /* Keep the headline figure; the supporting two are noise on a phone. */
-  .praise-strip-item:not(.primary) { display: none; }
-}
-
 .stat-tile.highlight { border-color: var(--gold); background: var(--gold-dim); }
 .stat-tile.highlight .stat-value { color: var(--gold); }
 

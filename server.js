@@ -21,7 +21,11 @@ const PERSISTENT_DIR = process.env.PERSISTENT_DATA_DIR
 
 if (!fs.existsSync(PERSISTENT_DIR)) fs.mkdirSync(PERSISTENT_DIR, { recursive: true });
 
-const GAMEWEEKS_FILE   = path.join(DATA_DIR,       'gameweeks.json');
+// Gameweeks live on the persistent volume, not in the code image. The copy in
+// data/ is only a seed for a fresh deployment — otherwise every deploy would
+// overwrite whatever weeks had been published through the admin page.
+const GAMEWEEKS_SEED   = path.join(DATA_DIR,       'gameweeks.json');
+const GAMEWEEKS_FILE   = path.join(PERSISTENT_DIR, 'gameweeks.json');
 const PREDICTIONS_FILE = path.join(PERSISTENT_DIR, 'predictions.json');
 const RESULTS_FILE     = path.join(PERSISTENT_DIR, 'results.json');
 const ACCESS_CODES_FILE = path.join(PERSISTENT_DIR, 'access-codes.json');
@@ -83,6 +87,19 @@ function seedAdminAccount() {
   } else {
     console.log(`✅  Admin account created for ${ADMIN_EMAIL}`);
   }
+}
+
+function seedGameweeks() {
+  // In local development both paths resolve to data/, so there is nothing to do.
+  if (path.resolve(GAMEWEEKS_FILE) === path.resolve(GAMEWEEKS_SEED)) return;
+  if (fs.existsSync(GAMEWEEKS_FILE)) return;
+  if (!fs.existsSync(GAMEWEEKS_SEED)) {
+    console.warn('⚠️   No gameweeks seed found — starting with an empty season');
+    writeJSON(GAMEWEEKS_FILE, { season: '', praise: { seasonWeeks: 40, seasonEnd: [] }, gameweeks: [] });
+    return;
+  }
+  fs.copyFileSync(GAMEWEEKS_SEED, GAMEWEEKS_FILE);
+  console.log('✅  gameweeks.json seeded onto the persistent volume');
 }
 
 function seedAccessCodes() {
@@ -1178,6 +1195,7 @@ app.listen(PORT, () => {
   console.log(`🔑  Admin password: ${ADMIN_PASSWORD}`);
   if (!emailEnabled) console.log('⚠️   Email not configured — set RESEND_API_KEY (recommended) or GMAIL_USER + GMAIL_APP_PASSWORD to enable password reset.');
   loadSessions();
+  seedGameweeks();
   seedAdminAccount();
   seedAccessCodes();
 });
