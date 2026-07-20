@@ -142,6 +142,17 @@ reflects it.
 Before a week locks, `/api/predictions` **omits** other players' picks for that
 week. Don't remove that filter; it's what stops players copying each other.
 
+## Save / Edit state on the Fixtures page
+
+`EDITING` in `fixtures.js` drives it. A week with nothing saved opens in entry
+mode; a week you've already submitted opens showing your picks as text with an
+"Edit Predictions" button.
+
+This exists because a status message alone wasn't enough feedback — players
+tapped Save, the button didn't change, and it looked like nothing happened.
+The button changing state *is* the confirmation. Saving also flashes
+"✓ Saved" on the button before settling into the saved view.
+
 Once a week locks, the Fixtures page renders an "Everyone's predictions" grid
 below the fixtures, colour-coded against the actual results. The score inputs
 are replaced by the player's own pick as text — disabled empty boxes on a locked

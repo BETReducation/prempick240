@@ -2310,3 +2310,12 @@ input.score-input:disabled { opacity: 0.5; }
     font-size: 12px;
   }
 }
+
+/* Confirmation flash on the save button itself. */
+.btn.btn-saved {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent-text) !important;
+  transform: scale(1.02);
+  transition: transform 0.15s;
+}

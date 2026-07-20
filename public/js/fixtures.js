@@ -7,6 +7,7 @@ let MY_PREDS   = {};     // matchId -> { home, away }
 let ACTIVE_GW  = null;   // gameweek id currently shown
 let DIRTY      = false;
 let ALL_PREDS  = [];     // every player's predictions — server only exposes locked weeks
+let EDITING    = false;  // true = inputs live; false = picks shown as saved text
 
 const COMP_LABEL = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup tie' };
 
@@ -97,9 +98,27 @@ function renderBanner(gw) {
   }
 }
 
+function hasSavedPicks(gw) {
+  return gw.matches.some(m => MY_PREDS[m.id] &&
+    MY_PREDS[m.id].home != null && MY_PREDS[m.id].away != null);
+}
+
+// Save / Edit state. A week you've already submitted opens in the saved view,
+// so the button reading "Edit Predictions" is itself the confirmation that
+// something is stored — which a status message alone failed to convey.
+function renderSaveBar(gw) {
+  const { userId } = Session.load();
+  const bar = el('saveBar');
+  if (gw.locked || !userId) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  el('saveBtn').style.display  = EDITING ? '' : 'none';
+  el('clearBtn').style.display = EDITING ? '' : 'none';
+  el('editBtn').style.display  = EDITING ? 'none' : '';
+}
+
 function renderFixtures(gw) {
   const { userId } = Session.load();
-  const editable = !gw.locked && !!userId;
+  const editable = !gw.locked && !!userId && EDITING;
 
   // Once any result is in, switch the grid to fixed trailing columns so the
   // date and score columns line up across rows regardless of badge length.
@@ -161,10 +180,7 @@ function renderFixtures(gw) {
     });
   });
 
-  // Save controls only make sense on an open week for a signed-in player.
-  el('saveBar').style.display  = editable ? '' : 'none';
-  el('clearBtn').style.display = editable ? '' : 'none';
-
+  renderSaveBar(gw);
   renderEveryonesPredictions(gw);
 }
 
@@ -257,6 +273,9 @@ function esc(s) {
 function render() {
   const gw = GW_DATA.gameweeks.find(g => g.id === ACTIVE_GW);
   if (!gw) return;
+  const { userId } = Session.load();
+  // Nothing saved yet for this week? Go straight into entry mode.
+  if (userId && !gw.locked && !DIRTY && !hasSavedPicks(gw)) EDITING = true;
   el('gwLabel').textContent = gw.locked ? `${gw.label} · Locked` : `${gw.label} · Open`;
   renderTabs();
   renderBanner(gw);
@@ -301,6 +320,19 @@ async function save() {
       : (n ? `Saved all ${n} predictions.` : 'Nothing to save — enter both scores for a fixture.');
     status.className = 'save-status ' + (incomplete || !n ? 'warn' : 'ok');
     if (r.rejected) status.textContent += ` (${r.rejected} rejected — deadline passed)`;
+
+    if (n) {
+      // Flash the confirmation on the button, then drop into the saved view.
+      const btn = el('saveBtn');
+      btn.textContent = '✓ Saved';
+      btn.classList.add('btn-saved');
+      setTimeout(() => {
+        btn.textContent = 'Save Predictions';
+        btn.classList.remove('btn-saved');
+        EDITING = false;
+        render();
+      }, 1400);
+    }
   } catch (e) {
     status.textContent = 'Could not save — ' + (e.message || 'try again');
     status.className = 'save-status err';
@@ -314,6 +346,7 @@ function clearWeek() {
   if (!confirm(`Clear your predictions for ${gw.label}?`)) return;
   gw.matches.forEach(m => { delete MY_PREDS[m.id]; });
   DIRTY = true;
+  EDITING = true;
   render();
 }
 
@@ -348,6 +381,11 @@ async function init() {
 
     el('saveBtn').addEventListener('click', save);
     el('clearBtn').addEventListener('click', clearWeek);
+    el('editBtn').addEventListener('click', () => {
+      EDITING = true;
+      render();
+      el('saveStatus').textContent = '';
+    });
     window.addEventListener('beforeunload', e => { if (DIRTY) e.preventDefault(); });
   } catch (e) {
     el('loadingState').innerHTML = `<p>Could not load fixtures — ${e.message}</p>`;
