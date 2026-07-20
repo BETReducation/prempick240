@@ -3,9 +3,10 @@
 function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
 
-// Praise is a percentage of the season pot. Show it tidily: 1, 1.5, 0.75.
-function pct(n) {
-  return `${Number(n.toFixed(2))}%`;
+// Praise is points, not percent. Shares can be fractional when several players
+// split a pot, so allow one decimal but never render 13.333333333333334.
+function pts(n) {
+  return Number(Math.round(Number(n) * 10) / 10).toLocaleString('en-GB');
 }
 
 function renderTable(board, gws, meId) {
@@ -43,19 +44,27 @@ function renderTable(board, gws, meId) {
 function renderPraise(praise) {
   el('praiseSummary').innerHTML = `
     <div class="stat-row">
-      <div class="stat-tile">
-        <span class="stat-value">${pct(praise.claimed)}</span>
-        <span class="stat-label">Praise won so far</span>
+      <div class="stat-tile highlight">
+        <span class="stat-value">${pts(praise.currentPot)}</span>
+        <span class="stat-label">On offer this week</span>
       </div>
       <div class="stat-tile">
-        <span class="stat-value">${pct(praise.rolledOver)}</span>
-        <span class="stat-label">Rolled into season pot</span>
+        <span class="stat-value">${pts(praise.totalPot)}</span>
+        <span class="stat-label">Total season pot</span>
       </div>
       <div class="stat-tile">
-        <span class="stat-value">${pct(praise.weeklyAllocation)}</span>
-        <span class="stat-label">Up for grabs each week</span>
+        <span class="stat-value">${pts(praise.claimed)}</span>
+        <span class="stat-label">Won so far</span>
       </div>
-    </div>`;
+      <div class="stat-tile">
+        <span class="stat-value">${pts(praise.remaining)}</span>
+        <span class="stat-label">Left in the pot</span>
+      </div>
+    </div>
+    <p class="section-note">${pts(praise.playerCount)} registered
+      &times; ${praise.seasonWeeks} weeks = ${pts(praise.totalPot)} praise for the season,
+      so a standard week is worth ${pts(praise.weeklyBase)}. Weeks nobody wins add to the next
+      week&rsquo;s pot rather than being lost.</p>`;
 
   el('praiseWeekly').innerHTML = praise.weekly.length ? `
     <div class="praise-list">
@@ -64,13 +73,13 @@ function renderPraise(praise) {
           <span class="praise-gw">${esc(w.label)}</span>
           <span class="praise-winners">
             ${w.rolledOver
-              ? '<span class="muted">Nobody called all six — praise rolled over</span>'
+              ? '<span class="muted">Nobody called all six — praise rolls into the next week</span>'
               : w.winners.map(x => `<span class="winner-chip"><i class="fa-solid fa-award"></i> ${esc(x.displayName || x.name)}</span>`).join('')}
           </span>
           <span class="praise-amount">${
-            w.rolledOver           ? pct(w.allocation)
-            : w.winners.length > 1 ? `${pct(w.sharePerWinner)} each`
-            :                        pct(w.sharePerWinner)
+            w.rolledOver           ? `${pts(w.pot)} carried over`
+            : w.winners.length > 1 ? `${pts(w.sharePerWinner)} each (${pts(w.pot)})`
+            :                        pts(w.pot)
           }</span>
         </div>`).join('')}
     </div>` : '<p class="empty">No completed gameweeks yet.</p>';
@@ -85,10 +94,10 @@ function renderPraise(praise) {
               ? s.leaders.map(x => `<span class="winner-chip">${esc(x.displayName || x.name)}</span>`).join('')
               : '<span class="muted">To be decided</span>'}
           </span>
-          <span class="praise-amount">${pct(s.praise)}</span>
+          <span class="praise-amount">${pts(s.praise)}</span>
         </div>`).join('')}
     </div>
-    <p class="section-note">Season-end praise is drawn from the ${pct(praise.rolledOver)} that no one won weekly, so these figures move as the season goes on.</p>`;
+    <p class="section-note">Season-end praise is drawn from the ${pts(praise.remaining)} still left in the pot, so these figures move every week.</p>`;
 }
 
 async function init() {

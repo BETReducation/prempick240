@@ -1,7 +1,7 @@
 {
   "season": "2026/27",
   "praise": {
-    "weeklyAllocation": 1,
+    "seasonWeeks": 40,
     "seasonEnd": [
       {
         "key": "league1st",
@@ -31,7 +31,6 @@
       "number": 1,
       "label": "Gameweek 1",
       "lockTime": "2026-08-15T14:00:00Z",
-      "praise": 1,
       "matches": [
         {
           "id": "gw1-m1",

@@ -37,17 +37,23 @@ An exact scoreline necessarily scores in both columns. The table ranks on
 
 ## Praise
 
-Praise is a finite pot expressed in percent — bragging rights and certificates,
-not prize money.
+Praise is a finite pot of points — bragging rights and certificates, not prize
+money.
 
-- Each completed gameweek puts its allocation (default **1%**) up for grabs.
-- Anyone calling **all six results** correctly shares that week's praise equally.
-- A week nobody wins rolls its allocation into the end-of-season pot.
-- The season-end pot is split **40% / 25% / 15%** for the top three in the table,
-  with the remaining **20%** for most exact scorelines.
+The **total season pot** is one point per registered player per week:
+40 players over 40 weeks = 1,600 praise. A standard week is therefore worth
+**one point per player** (40, in that example).
 
-All of these figures live in `data/gameweeks.json` under `praise` and can be
-changed without touching code.
+- Anyone calling **all six results** correctly shares that week's pot equally.
+- A week nobody wins **carries over**, so the next week is worth more —
+  40, then 80, then 120, until someone claims it. The pot then resets.
+- Whatever is never won weekly is split at the end of the season:
+  **40% / 25% / 15%** for the top three, **20%** for most exact scorelines.
+
+The running total is shown in the strip under the nav on every page.
+
+`seasonWeeks` and the season-end percentages live in `data/gameweeks.json`
+under `praise` and can be changed without touching code.
 
 ## Admin
 

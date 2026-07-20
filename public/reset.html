@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Password · World Cup 2026</title>
+  <title>Reset Password · PremPick240</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -13,13 +13,11 @@
 <body>
 
 <nav class="site-nav">
-  <a href="index.html" class="nav-logo">WC26 <span>Prediction League</span></a>
+  <a href="index.html" class="nav-logo">PremPick240 <span>Prediction League</span></a>
   <div class="nav-links">
     <a href="index.html">Home</a>
-    <a href="predictions.html">Group Predictions</a>
-    <a href="knockout.html">Knockout Predictions</a>
-    <a href="bracket.html">Bracket</a>
-    <a href="results.html">Results</a>
+    <a href="index.html">Fixtures</a>
+    <a href="ranking.html">Ranking</a>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
   </div>
 </nav>
@@ -35,13 +33,13 @@
     <p style="font-size:48px;margin-bottom:16px;"><i class="fa-solid fa-circle-xmark" style="color:var(--red);"></i></p>
     <h2 class="section-title" style="color:var(--red);">Link Expired</h2>
     <p class="section-desc">This password reset link is invalid or has expired (links are valid for 1 hour).</p>
-    <a href="predictions.html" class="btn btn-primary" style="margin-top:16px;">Back to Sign In →</a>
+    <a href="index.html" class="btn btn-primary" style="margin-top:16px;">Back to Sign In →</a>
   </div>
 
   <div id="viewForm" style="display:none;">
     <p class="section-label">Account security</p>
     <h2 class="section-title">Set New Password</h2>
-    <p class="section-desc">Choose a new password for your WC26 account. Must be at least 8 characters.</p>
+    <p class="section-desc">Choose a new password for your PremPick240 account. Must be at least 8 characters.</p>
 
     <div class="card" style="margin-top:24px;">
       <div class="error-msg hidden" id="resetError"></div>
@@ -61,29 +59,30 @@
     <p style="font-size:48px;margin-bottom:16px;"><i class="fa-solid fa-circle-check" style="color:var(--accent);"></i></p>
     <h2 class="section-title">Password Updated</h2>
     <p class="section-desc">Your password has been changed. Sign in with your new password now.</p>
-    <a href="predictions.html" class="btn btn-primary" style="margin-top:16px;">Sign In →</a>
+    <a href="index.html" class="btn btn-primary" style="margin-top:16px;">Sign In →</a>
   </div>
 
 </div>
 
 <footer>
-  <span>WC26 Prediction League</span>
+  <span>PremPick240 Prediction League</span>
 </footer>
 
 <script>
   const toggle = document.getElementById('themeToggle');
   const html   = document.documentElement;
-  const saved  = localStorage.getItem('wc26_theme') || 'light';
+  const saved  = localStorage.getItem('pp240_theme') || 'light';
   html.dataset.theme = saved;
   toggle.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
   toggle.addEventListener('click', () => {
     const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
     html.dataset.theme = next;
-    localStorage.setItem('wc26_theme', next);
+    localStorage.setItem('pp240_theme', next);
     toggle.innerHTML = next === 'dark' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-regular fa-sun"></i>';
   });
 </script>
 <script src="js/api.js"></script>
+<script src="js/praise-strip.js"></script>
 <script>
   const token = new URLSearchParams(location.search).get('token');
 

@@ -37,14 +37,15 @@ flow as WC26 (email + password, invite code required for new accounts).
 {
   "season": "2026/27",
   "praise": {
-    "weeklyAllocation": 1.0,          // % up for grabs each week
+    "seasonWeeks": 40,                // pot = registeredPlayers × this
     "seasonEnd": [ { "key": "league1st", "label": "…", "percent": 40 }, … ]
   },
   "gameweeks": [
     {
       "id": "gw1", "number": 1, "label": "Gameweek 1",
       "lockTime": "2026-08-15T14:00:00Z",   // ISO UTC — 15:00 UK in summer
-      "praise": 1.0,                         // optional per-week override
+      // no "praise" key: the week is worth one point per registered player.
+      // Only add one to deliberately override that.
       "matches": [
         { "id": "gw1-m1", "comp": "PL", "home": "Arsenal", "away": "Chelsea",
           "kickoff": "2026-08-15T14:00:00Z" }
@@ -72,17 +73,40 @@ end-of-season awards, which is why it is kept separate rather than added on.
 
 ## Praise
 
-Praise is a finite pot in percent — bragging rights and certificates, not prize
-money (deliberately not cash for legal reasons).
+Praise is a finite pot of **points** — bragging rights and certificates, not
+prize money (deliberately not cash, for legal reasons).
 
-- Each **completed** gameweek puts its allocation up for grabs.
-- Players calling **all six results** correctly share it equally.
-- Weeks nobody wins roll into the season-end pot.
-- Season-end pot splits per `praise.seasonEnd` — 40/25/15 for the top three,
-  20% for most exact scorelines.
+```
+totalPot    = registeredPlayers × seasonWeeks   (default 40 weeks)
+weeklyBase  = totalPot / seasonWeeks = registeredPlayers
+```
 
-All percentages are config, not code. A planned FA Cup side competition would
-take a slice of that 20% — add it as another `seasonEnd` entry.
+So with 40 players the season pot is 1,600 and a standard week is worth 40.
+
+- Each **completed** gameweek adds `weeklyBase` to a running pot.
+- Players calling **all six results** correctly share the *entire* running pot
+  equally, and it resets to 0.
+- A week nobody wins keeps its points banked, so the next week is worth more
+  (40 → 80 → 120 …). Nothing is lost.
+- `currentPot` in `/api/praise` is what this week's winners would share:
+  everything banked plus this week's own allocation.
+- Whatever is never won weekly (`remaining = totalPot − claimed`) is split at
+  season end per `praise.seasonEnd` — 40/25/15 for the top three, 20% for most
+  exact scorelines.
+
+A planned FA Cup side competition would take a slice of that 20% — add it as
+another `seasonEnd` entry, no code change.
+
+**Player count is live.** `totalPot` and `weeklyBase` are derived from the
+current number of registered players, so both move if someone joins mid-season,
+and past weeks are re-valued at the new rate on the next API call. That keeps
+one obvious rule ("a week is worth one point per player") at the cost of
+historical figures not being frozen. If you'd rather freeze them, snapshot the
+player count onto each gameweek when it completes.
+
+A gameweek may carry an explicit `praise` field to override its allocation.
+Don't set it to 0 by accident — that pins the week's value and stops it
+tracking the player count.
 
 ## Prediction locking
 

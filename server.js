@@ -122,7 +122,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 //   1. Resend  — set RESEND_API_KEY  (uses HTTPS API, not SMTP — works on Railway)
 //   2. Gmail   — set GMAIL_USER + GMAIL_APP_PASSWORD  (requires App Password)
 // Also set APP_URL to your public URL so reset links work.
-// Set MAIL_FROM to override the sender address (e.g. "WC26 <admin@wc26.win>").
+// Set MAIL_FROM to override the sender address (e.g. "PremPick240 <admin@prempick240.com>").
 
 const emailEnabled = !!(process.env.RESEND_API_KEY || (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD));
 
@@ -139,17 +139,17 @@ if (!process.env.RESEND_API_KEY && process.env.GMAIL_USER && process.env.GMAIL_A
 
 function getFromAddress() {
   if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
-  if (process.env.RESEND_API_KEY) return '"WC26 Prediction League" <onboarding@resend.dev>';
-  if (process.env.GMAIL_USER)     return `"WC26 Prediction League" <${process.env.GMAIL_USER}>`;
-  return '"WC26 Prediction League" <noreply@example.com>';
+  if (process.env.RESEND_API_KEY) return '"PremPick240 Prediction League" <onboarding@resend.dev>';
+  if (process.env.GMAIL_USER)     return `"PremPick240 Prediction League" <${process.env.GMAIL_USER}>`;
+  return '"PremPick240 Prediction League" <noreply@example.com>';
 }
 
 const EMAIL_TEXT = (name, resetLink) =>
-  `Hi ${name},\n\nWe received a request to reset your WC26 Prediction League password.\n\nClick the link below to set a new password. This link expires in 1 hour.\n\n${resetLink}\n\nIf you didn't request this, you can safely ignore this email.\n\n— WC26 Prediction League`;
+  `Hi ${name},\n\nWe received a request to reset your PremPick240 Prediction League password.\n\nClick the link below to set a new password. This link expires in 1 hour.\n\n${resetLink}\n\nIf you didn't request this, you can safely ignore this email.\n\n— PremPick240 Prediction League`;
 
 const EMAIL_HTML = (name, resetLink) => `
   <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0b0f1a;color:#e2e8f4;border-radius:12px;">
-    <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;color:#4dc97a;">WC26 Prediction League</h2>
+    <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;color:#4dc97a;">PremPick240 Prediction League</h2>
     <p style="margin:0 0 20px;color:#6b7a99;font-size:14px;">Password reset request</p>
     <p style="margin:0 0 16px;">Hi <strong>${name}</strong>,</p>
     <p style="margin:0 0 24px;color:#a0aec0;">We received a request to reset your password. Click the button below — the link expires in <strong>1 hour</strong>.</p>
@@ -171,7 +171,7 @@ async function sendPasswordResetEmail(to, name, resetLink) {
       body: JSON.stringify({
         from:    getFromAddress(),
         to:      [to],
-        subject: 'WC26 — Reset your password',
+        subject: 'PremPick240 — Reset your password',
         text:    EMAIL_TEXT(name, resetLink),
         html:    EMAIL_HTML(name, resetLink)
       })
@@ -187,7 +187,7 @@ async function sendPasswordResetEmail(to, name, resetLink) {
   if (gmailMailer) {
     await gmailMailer.sendMail({
       from: getFromAddress(), to,
-      subject: 'WC26 — Reset your password',
+      subject: 'PremPick240 — Reset your password',
       text:    EMAIL_TEXT(name, resetLink),
       html:    EMAIL_HTML(name, resetLink)
     });
@@ -547,7 +547,10 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
     number: num,
     label: sanitise(label || `Gameweek ${num}`, 60),
     lockTime: lockTime || null,
-    praise: praise != null ? Number(praise) : (gws.praise?.weeklyAllocation ?? 0),
+    // Only persist an override when one was explicitly supplied. Storing a
+    // value here (especially 0) would pin the week's allocation and stop it
+    // tracking the registered-player count.
+    ...(praise != null && !isNaN(Number(praise)) ? { praise: Number(praise) } : {}),
     matches: clean
   };
 
@@ -968,56 +971,78 @@ function calcPraise() {
   const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
   const board   = calcLeaderboard();
 
+  // Praise is denominated in points, not percent. The season pot is one point
+  // per registered player per week, so a single week is worth exactly the
+  // number of players. Both figures move if someone joins mid-season — see
+  // CLAUDE.md, this is deliberate.
+  const seasonWeeks  = Number(gws.praise?.seasonWeeks ?? 40);
+  const playerCount  = board.length;
+  const weeklyBase   = playerCount;
+  const totalPot     = playerCount * seasonWeeks;
+
   const weekly = [];
-  let claimed = 0, rolledOver = 0;
+  let running = 0;   // banked by weeks nobody won; reset to 0 on every payout
+  let claimed = 0;
 
   for (const gw of gws.gameweeks || []) {
     if (!gameweekComplete(gw, results)) continue;
-    const allocation = gw.praise != null ? Number(gw.praise) : Number(gws.praise?.weeklyAllocation ?? 0);
+
+    // A week's own allocation may be overridden per gameweek; otherwise it is
+    // the standard weekly base.
+    const allocation = gw.praise != null ? Number(gw.praise) : weeklyBase;
+    running += allocation;
+
     const winners = board
       .filter(p => p.perGameweek[gw.id]?.perfect)
       .map(p => ({ id: p.id, name: p.name, displayName: p.displayName }));
 
     if (winners.length) {
-      claimed += allocation;
+      const pot = running;
+      claimed += pot;
+      running  = 0;                       // pot emptied, starts again from zero
       weekly.push({
         gameweekId: gw.id, number: gw.number, label: gw.label,
-        allocation, winners, sharePerWinner: allocation / winners.length, rolledOver: false
+        allocation, pot, winners,
+        sharePerWinner: pot / winners.length,
+        rolledOver: false
       });
     } else {
-      rolledOver += allocation;
       weekly.push({
         gameweekId: gw.id, number: gw.number, label: gw.label,
-        allocation, winners: [], sharePerWinner: 0, rolledOver: true
+        allocation, pot: running, winners: [],
+        sharePerWinner: 0,
+        rolledOver: true
       });
     }
   }
 
-  // Season-end pot: everything not won weekly. Only meaningful once the season
-  // is done, but shown live as a running projection.
-  const splits = gws.praise?.seasonEnd || [];
-  const mostExact = board.length
-    ? Math.max(...board.map(p => p.scorePoints))
-    : 0;
+  // What this week's winners would actually share: everything banked by
+  // previous winnerless weeks, plus this week's own allocation.
+  const currentPot = running + weeklyBase;
+  const remaining  = Math.max(0, totalPot - claimed);
+
+  // Whatever is never won weekly is split at the end of the season.
+  const splits    = gws.praise?.seasonEnd || [];
+  const mostExact = board.length ? Math.max(...board.map(p => p.scorePoints)) : 0;
 
   const seasonEnd = splits.map(s => {
     let candidates = [];
-    if (s.key === 'league1st' && board[0]) candidates = [board[0]];
+    if      (s.key === 'league1st' && board[0]) candidates = [board[0]];
     else if (s.key === 'league2nd' && board[1]) candidates = [board[1]];
     else if (s.key === 'league3rd' && board[2]) candidates = [board[2]];
     else if (s.key === 'mostExact') candidates = board.filter(p => p.scorePoints === mostExact && mostExact > 0);
     return {
       ...s,
-      praise: rolledOver * (s.percent / 100),
+      praise: Math.round(remaining * (s.percent / 100)),
       leaders: candidates.map(p => ({ id: p.id, name: p.name, displayName: p.displayName }))
     };
   });
 
   return {
-    weeklyAllocation: gws.praise?.weeklyAllocation ?? 0,
+    seasonWeeks, playerCount, weeklyBase,
+    totalPot, claimed, remaining,
+    currentPot,
     weekly,
-    claimed,
-    rolledOver,
     seasonEnd
   };
 }
