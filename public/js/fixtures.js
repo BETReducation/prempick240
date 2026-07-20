@@ -32,6 +32,15 @@ function fmtLock(iso) {
   });
 }
 
+function fmtLockShort(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/London'
+  }).replace(',', '');
+}
+
 function countdown(iso) {
   const ms = new Date(iso) - new Date();
   if (ms <= 0) return null;
@@ -78,9 +87,12 @@ function renderBanner(gw) {
     </div>`;
   } else {
     const left = countdown(gw.lockTime);
+    // Two renderings: the full sentence for desktop, a terse one for the
+    // mobile strip where it shares a row with the gameweek tabs.
     banner.innerHTML = `<div class="lock-notice">
       <i class="fa-regular fa-clock"></i>
-      <span>Deadline <strong>${fmtLock(gw.lockTime)}</strong>${left ? ` — ${left} left` : ''}.</span>
+      <span class="lock-full">Deadline <strong>${fmtLock(gw.lockTime)}</strong>${left ? ` — ${left} left` : ''}.</span>
+      <span class="lock-short"><strong>${fmtLockShort(gw.lockTime)}</strong>${left ? `<span class="lock-left">${left} left</span>` : ''}</span>
     </div>`;
   }
 }
@@ -113,7 +125,9 @@ function renderFixtures(gw) {
 
         return `
         <div class="fixture-row${scored ? ' played' : ''}">
-          <span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>
+          ${m.comp && m.comp !== 'PL'
+            ? `<span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>`
+            : '<span class="fixture-comp-none"></span>'}
           <span class="fixture-team home">${m.home}</span>
           <div class="fixture-scores">
             ${editable ? `

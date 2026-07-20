@@ -118,6 +118,11 @@ tracking the player count.
 - **Results** — pick a gameweek, type scores, save. Partial entry is fine; praise
   is only awarded once all six have results. Shows who won the week's praise as
   soon as the last result lands.
+- **Records** — the season's audit trail. Pick a week from the dropdown to see
+  everyone's predictions against the results, ranked by results called right.
+  "Export CSV" dumps *every* locked week, not just the one on screen.
+  Unlocked weeks stay hidden here too — the admin plays, so revealing them
+  early would be a fairness hole.
 - **Fixtures** — create or edit a gameweek: number, label, deadline and six
   fixtures. The deadline input is **UK wall-clock**, converted to UTC on save by
   `ukLocalToUtcISO()`, which iterates against `Europe/London` rather than
@@ -187,7 +192,11 @@ redeploys.
 - Vanilla JS frontend — don't introduce a framework or build step.
 - Times in `gameweeks.json` are **ISO UTC**; the UI renders them in
   `Europe/London` explicitly so a player abroad still sees UK kick-off times.
-- Score inputs are integers 0–99, validated server-side.
+- Score inputs are integers 0–99, validated server-side. They are styled via
+  `input.score-input`; the older `.score-input input[type="text"]` rules are
+  WC26 leftovers that match nothing here.
+- The competition badge renders only for non-PL fixtures. PL is the default and
+  a badge on every row was noise; CH and CUP still stand out.
 - `parseInt(x) || fallback` is a trap where 0 is valid (gameweek numbers,
   scores) — use `Number.isInteger` / explicit `isNaN` checks.
 - `POST /api/admin/gameweeks` rebuilds each match object, so any field it

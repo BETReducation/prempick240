@@ -8,6 +8,7 @@ let GWS      = null;   // /api/gameweeks payload
 let RESULTS  = {};     // matchId -> { home, away, played }
 let EDIT_ID  = null;   // gameweek id being edited on the Fixtures panel
 let ADMIN_PW = sessionStorage.getItem('pp240_adminpw') || null;
+let ALL_PREDS = [];    // every player's predictions — locked weeks only
 
 const COMPS = ['PL', 'CH', 'CUP'];
 const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup' };
@@ -284,6 +285,120 @@ async function deleteGameweek() {
   }
 }
 
+
+// ── Records ───────────────────────────────────────────────────────────────────
+// The season's audit trail: one week at a time, everyone's picks against the
+// actual results. /api/predictions withholds weeks that haven't locked, which
+// applies to admins too — that's deliberate, since the admin plays as well.
+
+function recordRows(gw) {
+  return ALL_PREDS
+    .map(p => {
+      const picks = gw.matches.map(m => p.predictions[m.id] || null);
+      let correct = 0, exact = 0;
+      gw.matches.forEach((m, i) => {
+        const r = RESULTS[m.id], pr = picks[i];
+        if (!r || !r.played || !pr) return;
+        if (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away)) correct++;
+        if (pr.home === r.home && pr.away === r.away) exact++;
+      });
+      return { ...p, picks, correct, exact, entered: picks.filter(Boolean).length };
+    })
+    .filter(p => p.entered > 0)
+    .sort((a, b) => b.correct - a.correct || b.exact - a.exact || a.name.localeCompare(b.name));
+}
+
+function renderRecords() {
+  const gw = GWS.gameweeks.find(g => g.id === el('recordGw').value);
+  const box = el('recordTable');
+  if (!gw) { box.innerHTML = '<p class="empty">No gameweeks yet.</p>'; el('recordHint').textContent = ''; return; }
+
+  if (!gw.locked) {
+    el('recordHint').textContent = 'Not locked yet';
+    box.innerHTML = `<p class="empty">${esc(gw.label)} hasn't locked yet, so predictions stay hidden — including from you. They appear here the moment the deadline passes.</p>`;
+    return;
+  }
+
+  const rows = recordRows(gw);
+  const anyResults = gw.matches.some(m => RESULTS[m.id]?.played);
+  el('recordHint').textContent = `${rows.length} player${rows.length === 1 ? '' : 's'} entered`;
+
+  if (!rows.length) { box.innerHTML = '<p class="empty">Nobody entered predictions for this week.</p>'; return; }
+
+  box.innerHTML = `
+    <div class="table-wrap">
+      <table class="preds-table">
+        <thead>
+          <tr>
+            <th class="col-player">Player</th>
+            ${gw.matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
+            ${anyResults ? '<th class="col-pts">Results</th><th class="col-pts">Exact</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(p => `
+            <tr>
+              <td class="col-player">${esc(p.displayName || p.name)}</td>
+              ${gw.matches.map((m, i) => {
+                const pr = p.picks[i], r = RESULTS[m.id];
+                if (!pr) return '<td class="col-fx muted">—</td>';
+                let cls = '';
+                if (r && r.played) {
+                  const right = Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away);
+                  const ex = pr.home === r.home && pr.away === r.away;
+                  cls = ex ? ' exact' : (right ? ' hit' : ' miss');
+                }
+                return `<td class="col-fx${cls}">${pr.home}–${pr.away}</td>`;
+              }).join('')}
+              ${anyResults ? `<td class="col-pts strong">${p.correct}</td><td class="col-pts">${p.exact}</td>` : ''}
+            </tr>`).join('')}
+          ${anyResults ? `
+            <tr class="actual-row">
+              <td class="col-player">Actual</td>
+              ${gw.matches.map(m => {
+                const r = RESULTS[m.id];
+                return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
+              }).join('')}
+              <td class="col-pts"></td><td class="col-pts"></td>
+            </tr>` : ''}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// Export the whole season, not just the week on screen — that's the point of
+// keeping a record.
+function exportCsv() {
+  const lines = [];
+  lines.push(['Gameweek', 'Deadline', 'Player', 'Fixture', 'Predicted', 'Actual', 'Correct result', 'Exact score'].join(','));
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+  for (const gw of GWS.gameweeks) {
+    if (!gw.locked) continue;
+    for (const p of recordRows(gw)) {
+      gw.matches.forEach((m, i) => {
+        const pr = p.picks[i], r = RESULTS[m.id];
+        const played = r && r.played;
+        lines.push([
+          q(gw.label), q(gw.lockTime || ''), q(p.displayName || p.name),
+          q(`${m.home} v ${m.away}`),
+          q(pr ? `${pr.home}-${pr.away}` : ''),
+          q(played ? `${r.home}-${r.away}` : ''),
+          q(!pr || !played ? '' : (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away) ? 'Y' : 'N')),
+          q(!pr || !played ? '' : (pr.home === r.home && pr.away === r.away ? 'Y' : 'N'))
+        ].join(','));
+      });
+    }
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `prempick240-predictions-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ── Shared ────────────────────────────────────────────────────────────────────
 
 function fillSelects() {
@@ -297,6 +412,16 @@ function fillSelects() {
     ? keepR
     : (GWS.currentGameweekId || GWS.gameweeks.at(-1)?.id || '');
 
+  const recSel = el('recordGw');
+  const keepRec = recSel.value;
+  // Newest first — you'll usually want the week just gone.
+  const recOpts = GWS.gameweeks.slice().reverse()
+    .map(g => `<option value="${g.id}">${esc(g.label)}${g.locked ? '' : ' (open)'}</option>`).join('');
+  recSel.innerHTML = recOpts;
+  recSel.value = keepRec && GWS.gameweeks.some(g => g.id === keepRec)
+    ? keepRec
+    : (GWS.gameweeks.filter(g => g.locked).slice(-1)[0]?.id || GWS.gameweeks[0]?.id || '');
+
   const eSel = el('editGw');
   const keepE = eSel.value;
   eSel.innerHTML = opts + '<option value="__new__">+ New gameweek</option>';
@@ -306,13 +431,17 @@ function fillSelects() {
 }
 
 async function refresh() {
-  const [gws, res] = await Promise.all([API.gameweeks(), API.results()]);
+  const [gws, res, preds] = await Promise.all([
+    API.gameweeks(), API.results(), API.allPredictions().catch(() => [])
+  ]);
   GWS = gws;
   RESULTS = res.results || {};
+  ALL_PREDS = preds || [];
   fillSelects();
   renderResultPanel();
   await renderPraisePreview();
   loadGwForEdit(el('editGw').value);
+  renderRecords();
 }
 
 async function boot() {
@@ -327,7 +456,11 @@ async function boot() {
       b.classList.add('active');
       el('panel-results').style.display  = b.dataset.panel === 'results'  ? '' : 'none';
       el('panel-fixtures').style.display = b.dataset.panel === 'fixtures' ? '' : 'none';
+      el('panel-records').style.display  = b.dataset.panel === 'records'  ? '' : 'none';
     }));
+
+  el('recordGw').addEventListener('change', renderRecords);
+  el('exportCsvBtn').addEventListener('click', exportCsv);
 
   el('resultGw').addEventListener('change', async () => { renderResultPanel(); await renderPraisePreview(); });
   el('saveResultsBtn').addEventListener('click', saveResults);

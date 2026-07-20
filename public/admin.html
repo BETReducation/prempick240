@@ -68,6 +68,7 @@
     <div class="tab-bar" id="adminTabs">
       <button class="tab-btn active" data-panel="results">Results</button>
       <button class="tab-btn" data-panel="fixtures">Fixtures</button>
+      <button class="tab-btn" data-panel="records">Records</button>
     </div>
   </div>
 
@@ -118,6 +119,17 @@
       <span class="save-status" id="fixtureStatus"></span>
       <button class="btn btn-primary btn-sm" id="saveGwBtn">Save Gameweek</button>
     </div>
+  </div>
+
+  <!-- ── Records ────────────────────────────────────────────────────────── -->
+  <div class="section section--flush section--wide admin-panel" id="panel-records" style="display:none;">
+    <div class="admin-bar">
+      <label for="recordGw">Week</label>
+      <select id="recordGw"></select>
+      <button class="btn btn-outline btn-sm" id="exportCsvBtn">Export CSV</button>
+      <span class="admin-hint" id="recordHint"></span>
+    </div>
+    <div id="recordTable"></div>
   </div>
 
 </div>

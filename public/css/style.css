@@ -2178,3 +2178,89 @@ footer span {
     max-width: calc(760px + 4rem);
   }
 }
+
+/* ── Score inputs ────────────────────────────────────────────────────────── */
+/* The older .score-input rules target input[type="text"] and never matched
+   these type="number" fields, so they had no styling at all. */
+
+input.score-input {
+  display: inline-block;
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input.score-input:hover  { border-color: var(--accent); }
+input.score-input:focus  {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+input.score-input:disabled { opacity: 0.5; }
+
+/* The competition badge only renders for non-PL fixtures now; keep an empty
+   cell so the grid columns still line up across rows. */
+.fixture-comp-none { display: block; }
+
+/* ── Gameweek strip: tabs + deadline ─────────────────────────────────────── */
+
+.gw-strip .lock-notice { margin-bottom: 0; }
+
+/* Full sentence on desktop, terse version in the mobile strip. */
+.lock-short { display: none; }
+@media (max-width: 720px) {
+  .lock-full  { display: none; }
+  .lock-short { display: block; white-space: nowrap; }
+  .lock-short .lock-left { display: block; opacity: 0.75; font-weight: 400; }
+}
+
+@media (min-width: 721px) {
+  .gw-strip .lock-notice { margin-top: 12px; }
+}
+
+@media (max-width: 720px) {
+  /* Tabs and deadline share one row, and the deadline drops its card so the
+     pair reads as a single strip rather than two crowded blocks. */
+  .gw-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  /* Tabs shrink and scroll; the deadline keeps its width. Over a 40-week
+     season the tab bar grows well past the viewport, and sizing it the other
+     way round would push the deadline off screen. */
+  .gw-strip .tab-bar { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
+  .gw-strip .lock-notice {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: right;
+  }
+  .gw-strip .lock-notice i { display: none; }
+
+  /* Bigger targets — on a phone these boxes are the whole point of the page. */
+  input.score-input {
+    width: 62px;
+    height: 54px;
+    font-size: 22px;
+    border-width: 2px;
+    border-radius: 10px;
+  }
+  .fixture-scores { gap: 10px; }
+  .fixture-v      { font-size: 13px; }
+  .fixture-row    { padding: 16px; }
+}
