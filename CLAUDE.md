@@ -113,7 +113,7 @@ tracking the player count.
 
 ## Admin page
 
-`public/admin.html` + `js/admin.js`. Two panels:
+`public/admin.html` + `js/admin.js`. Three panels:
 
 - **Results** — pick a gameweek, type scores, save. Partial entry is fine; praise
   is only awarded once all six have results. Shows who won the week's praise as
