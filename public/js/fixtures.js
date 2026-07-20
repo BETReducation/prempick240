@@ -89,8 +89,12 @@ function renderFixtures(gw) {
   const { userId } = Session.load();
   const editable = !gw.locked && !!userId;
 
+  // Once any result is in, switch the grid to fixed trailing columns so the
+  // date and score columns line up across rows regardless of badge length.
+  const anyResult = gw.matches.some(m => RESULTS[m.id]?.played);
+
   el('fixtureList').innerHTML = `
-    <div class="fixture-grid">
+    <div class="fixture-grid${anyResult ? ' has-results' : ''}">
       ${gw.matches.map((m, i) => {
         const pred   = MY_PREDS[m.id] || {};
         const result = RESULTS[m.id];

@@ -2111,7 +2111,7 @@ footer span {
 #fixturesApp .save-bar,
 #adminApp .save-bar,
 #praisePreview {
-  max-width: 840px;
+  max-width: 760px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -2121,7 +2121,18 @@ footer span {
    without the min-width guard they'd override the stacked mobile layout and
    collide the team names with the score boxes. */
 @media (min-width: 721px) {
-  .fixture-row { grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px 52px 108px; }
+  /* The last two tracks hold the actual score and the hit/miss badge, which
+     only exist once a result is in. Sizing them `auto` lets them collapse to
+     nothing beforehand instead of reserving 160px of empty space on the right.
+     The tracks before them stay fixed, so the date column still lines up
+     across rows whether or not a result has been entered. */
+  .fixture-row { grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px auto auto; }
+  /* With results in, pin the last two tracks so every row's date and score
+     align — `auto` sizes them per row and the varying badge width ("Missed"
+     vs "Result Exact") would otherwise shift the columns before them. */
+  .fixture-grid.has-results .fixture-row {
+    grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px 46px 104px;
+  }
   .admin-row   { grid-template-columns: 46px minmax(0,1fr) 52px auto 52px minmax(0,1fr) 74px 58px; }
 }
 
