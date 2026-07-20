@@ -20,7 +20,7 @@ design system, different domain model.
 
 | File | Purpose |
 |------|---------|
-| `public/index.html` | **Fixtures** — the front page. This week's six fixtures + prediction entry. Past weeks via tabs. |
+| `public/index.html` | **Predictions** — the front page. This week's six fixtures + prediction entry. Past weeks via tabs. Deliberately shows no results; those live on Ranking. |
 | `public/ranking.html` | **Ranking** — season table + praise ledger |
 | `public/member.html` | Player profile (display name, bio, avatar, stats) |
 | `public/admin.html` | **Admin** — publish a week's fixtures, enter results. Linked in the nav for admin accounts only. |
@@ -196,6 +196,13 @@ Intended for **Railway** (`railway.toml`), same as WC26, but as a **separate
 project with its own volume** — do not point it at the WC26 deployment.
 Set `PERSISTENT_DATA_DIR` to the mounted volume so runtime JSON survives
 redeploys.
+
+## Watch out: data/gameweeks.json is written by the admin API
+
+Local testing through `/api/admin/gameweeks` rewrites this tracked file, so it
+picks up test lock times and fixtures. It has been committed by accident once,
+which locked Gameweek 1 on the live site. **Check `git diff data/gameweeks.json`
+before every commit** — restore it deliberately rather than assuming it is clean.
 
 ## Key conventions
 

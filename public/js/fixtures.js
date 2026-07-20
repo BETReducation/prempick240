@@ -120,30 +120,12 @@ function renderFixtures(gw) {
   const { userId } = Session.load();
   const editable = !gw.locked && !!userId && EDITING;
 
-  // Once any result is in, switch the grid to fixed trailing columns so the
-  // date and score columns line up across rows regardless of badge length.
-  const anyResult = gw.matches.some(m => RESULTS[m.id]?.played);
-
   el('fixtureList').innerHTML = `
-    <div class="fixture-grid${anyResult ? ' has-results' : ''}">
+    <div class="fixture-grid">
       ${gw.matches.map((m, i) => {
-        const pred   = MY_PREDS[m.id] || {};
-        const result = RESULTS[m.id];
-        const scored = result && result.played;
-
-        // Once a result is in, show how the player's call went.
-        let outcome = '';
-        if (scored && pred.home != null) {
-          const rightResult = Math.sign(result.home - result.away) === Math.sign(pred.home - pred.away);
-          const rightScore  = pred.home === result.home && pred.away === result.away;
-          outcome = `<span class="pred-outcome ${rightResult ? 'hit' : 'miss'}">
-            ${rightResult ? '<i class="fa-solid fa-check"></i> Result' : '<i class="fa-solid fa-xmark"></i> Missed'}
-            ${rightScore ? ' <i class="fa-solid fa-bullseye"></i> Exact' : ''}
-          </span>`;
-        }
-
+        const pred = MY_PREDS[m.id] || {};
         return `
-        <div class="fixture-row${scored ? ' played' : ''}">
+        <div class="fixture-row">
           ${m.comp && m.comp !== 'PL'
             ? `<span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>`
             : '<span class="fixture-comp-none"></span>'}
@@ -163,8 +145,6 @@ function renderFixtures(gw) {
           </div>
           <span class="fixture-team away">${m.away}</span>
           <span class="fixture-date">${fmtMatchDate(m)}</span>
-          <span class="fixture-actual">${scored ? `${result.home}–${result.away}` : ''}</span>
-          ${outcome}
         </div>`;
       }).join('')}
     </div>`;

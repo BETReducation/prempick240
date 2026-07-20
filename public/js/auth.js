@@ -65,16 +65,31 @@ document.addEventListener('DOMContentLoaded', () => {
     link.href          = 'member.html?id=' + userId;
     link.style.display = 'flex';
 
-    // Admin link — only rendered for admin accounts.
+    // Admin link — only rendered for admin accounts, in both the desktop nav
+    // and the mobile drawer. The drawer was previously missed, so admins had
+    // no way to reach the admin page on a phone.
     API.me().then(me => {
       if (!me || !me.isAdmin) return;
+      const onAdmin = location.pathname.endsWith('admin.html');
+
       if (!document.getElementById('navAdminLink')) {
         const a = document.createElement('a');
         a.id = 'navAdminLink';
         a.href = 'admin.html';
         a.innerHTML = '<i class="fa-solid fa-sliders"></i> Admin';
-        if (location.pathname.endsWith('admin.html')) a.className = 'active';
+        if (onAdmin) a.className = 'active';
         link.insertAdjacentElement('beforebegin', a);
+      }
+
+      const drawerLinks = document.querySelector('.nav-drawer-links');
+      if (drawerLinks && !document.getElementById('drawerAdminLink')) {
+        const d = document.createElement('a');
+        d.id = 'drawerAdminLink';
+        d.href = 'admin.html';
+        d.innerHTML = '<i class="fa-solid fa-sliders"></i> Admin';
+        if (onAdmin) d.className = 'active';
+        d.addEventListener('click', closeDrawer);
+        drawerLinks.appendChild(d);
       }
     }).catch(() => {});
 

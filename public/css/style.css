@@ -1662,7 +1662,7 @@ footer span {
 
 .fixture-row {
   display: grid;
-  grid-template-columns: 44px 1fr auto 1fr 96px 56px 116px;
+  grid-template-columns: 44px 1fr auto 1fr 96px;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -1869,8 +1869,7 @@ footer span {
     grid-template-columns: 1fr auto 1fr;
     grid-template-areas:
       "comp date date"
-      "home score away"
-      "actual actual outcome";
+      "home score away";
     gap: 8px;
   }
   .fixture-comp    { grid-area: comp; justify-self: start; padding: 3px 10px; }
@@ -1878,8 +1877,6 @@ footer span {
   .fixture-team.home { grid-area: home; }
   .fixture-scores  { grid-area: score; }
   .fixture-team.away { grid-area: away; }
-  .fixture-actual  { grid-area: actual; text-align: left; }
-  .pred-outcome    { grid-area: outcome; }
 
   .praise-row {
     grid-template-columns: 1fr auto;
@@ -2128,13 +2125,7 @@ footer span {
      nothing beforehand instead of reserving 160px of empty space on the right.
      The tracks before them stay fixed, so the date column still lines up
      across rows whether or not a result has been entered. */
-  .fixture-row { grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px auto auto; }
-  /* With results in, pin the last two tracks so every row's date and score
-     align — `auto` sizes them per row and the varying badge width ("Missed"
-     vs "Result Exact") would otherwise shift the columns before them. */
-  .fixture-grid.has-results .fixture-row {
-    grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px 46px 104px;
-  }
+  .fixture-row { grid-template-columns: 44px minmax(0,1fr) auto minmax(0,1fr) 92px; }
   .admin-row   { grid-template-columns: 46px minmax(0,1fr) 52px auto 52px minmax(0,1fr) 74px 58px; }
 }
 
