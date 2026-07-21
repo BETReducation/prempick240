@@ -1192,7 +1192,7 @@ function handleAvatarFile(e) {
       ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
       pendingAction = { type: 'avatar', dataUrl };
-      openConfirm('Update Profile Photo', 'Enter your PIN to save your new photo.', true, 'Save Photo');
+      openConfirm('Update Profile Photo', 'Enter your password to save your new photo.', true, 'Save Photo');
     };
     img.src = ev.target.result;
   };
@@ -1286,7 +1286,7 @@ async function runConfirmedAction() {
         body: JSON.stringify({ password })
       });
       const d = await r.json();
-      if (!r.ok) { err.textContent = d.error || 'Incorrect PIN'; return; }
+      if (!r.ok) { err.textContent = d.error || 'Incorrect password'; return; }
       showToast('Predictions cleared', 'ok');
       closeConfirm();
       await loadProfile();

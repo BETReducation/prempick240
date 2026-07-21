@@ -24,10 +24,9 @@ const API = {
   },
 
   // Auth
-  register(name, email, password, legacyPin = null, accessCode = null) {
+  register(name, email, password, accessCode = null) {
     return API.post('/api/register', {
       name, email, password,
-      ...(legacyPin   ? { legacyPin }   : {}),
       ...(accessCode  ? { accessCode }  : {})
     });
   },

@@ -240,27 +240,18 @@ function hashStr(value, salt) {
 }
 
 // Checks a submitted password against a user record.
-// Supports new passwordSalt/passwordHash fields, legacy hashed PINs (pinSalt/pinHash),
-// and legacy plaintext PINs — enabling transparent migration.
 function checkPassword(input, user) {
   if (user.passwordSalt && user.passwordHash)
     return hashStr(input, user.passwordSalt) === user.passwordHash;
-  if (user.pinSalt && user.pinHash)                       // legacy hashed PIN
-    return hashStr(input, user.pinSalt)     === user.pinHash;
-  if (user.pin !== undefined)                             // legacy plaintext PIN
-    return String(user.pin) === String(input);
   return false;
 }
 
-// Writes a new hashed password onto a user record and removes legacy PIN fields.
+// Writes a new hashed password onto a user record.
 // Caller must persist the data file.
 function setPassword(user, password) {
   const salt = crypto.randomBytes(16).toString('hex');
   user.passwordSalt = salt;
   user.passwordHash = hashStr(password, salt);
-  delete user.pinSalt;
-  delete user.pinHash;
-  delete user.pin;
 }
 
 // ── Rate limiting (in-memory, per IP) ─────────────────────────────────────────
@@ -625,7 +616,6 @@ app.post('/api/register', (req, res) => {
   const name      = sanitise(req.body.name, 30);
   const email     = sanitise(req.body.email || '', 254).toLowerCase();
   const password  = String(req.body.password || '').trim();
-  const legacyPin = req.body.legacyPin ? String(req.body.legacyPin).trim() : null;
 
   // Validate email
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -647,27 +637,6 @@ app.post('/api/register', (req, res) => {
     clearFailures(req);
     const token = createSession(existing.id);
     return res.json({ userId: existing.id, name: existing.displayName || existing.name, token });
-  }
-
-  // ── Optional migration: claim a legacy PIN-based account ────────────────────
-  if (legacyPin && name) {
-    const legacy = data.users.find(u =>
-      !u.email && u.name.toLowerCase() === name.toLowerCase()
-    );
-    if (legacy && checkPassword(legacyPin, legacy)) {
-      // Merge: attach email + new password to existing account, keep userId + predictions
-      legacy.email = email;
-      setPassword(legacy, password);
-      writeJSON(PREDICTIONS_FILE, data);
-      const token = createSession(legacy.id);
-      return res.json({
-        userId: legacy.id,
-        name:   legacy.displayName || legacy.name,
-        token,
-        migrated: true
-      });
-    }
-    // Wrong legacy PIN or no match — fall through to create a fresh account
   }
 
   // ── New account ──────────────────────────────────────────────────────────────

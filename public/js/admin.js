@@ -201,6 +201,14 @@ function renderFixtureEditor(gw) {
 
   el('fixtureRows').innerHTML = `
     <div class="admin-rows">
+      <div class="admin-row edit admin-row-head" aria-hidden="true">
+        <span>Comp</span>
+        <span>Home</span>
+        <span></span>
+        <span>Away</span>
+        <span>Date</span>
+        <span>Kick-off (UK)</span>
+      </div>
       ${matches.map((m, i) => `
         <div class="admin-row edit" data-i="${i}">
           <select class="fx-comp" data-i="${i}">

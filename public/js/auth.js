@@ -173,16 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <label for="navAuthCode">Invite code <span style="color:var(--muted);font-size:11px;">(new accounts only — leave blank to sign in)</span></label>
               <input type="text" id="navAuthCode" placeholder="e.g. Robin Van Shearer" autocomplete="off">
             </div>
-            <details style="margin-bottom:12px;">
-              <summary style="cursor:pointer;font-size:12px;color:var(--muted);user-select:none;">Had a PIN-based account? Click to claim it</summary>
-              <div style="margin-top:8px;">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label for="navAuthLegacyPin">Old 4-digit PIN</label>
-                  <input type="number" id="navAuthLegacyPin" placeholder="e.g. 1234" min="1000" max="9999" inputmode="numeric">
-                  <small>Enter your old PIN along with your name above to keep your previous predictions.</small>
-                </div>
-              </div>
-            </details>
             <button class="btn btn-primary btn-full" id="navAuthSubmit">Sign in →</button>
             <button class="btn btn-outline btn-full" id="navAuthCancel" style="margin-top:8px;">Cancel</button>
           </div>
@@ -247,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const em = emailInput.value.trim();
       const pw = passwordInput.value.trim();
       const ac = codeInput.value.trim() || null;
-      const lp = document.getElementById('navAuthLegacyPin')?.value.trim() || null;
       errorEl.classList.add('hidden');
 
       if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { showNavErr('Please enter a valid email address.'); return; }
@@ -256,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.disabled    = true;
       submitBtn.textContent = 'Signing in…';
       try {
-        const data = await API.register(n, em, pw, lp || null, ac);
+        const data = await API.register(n, em, pw, ac);
         Session.save(data.userId, data.name, data.token);
         location.reload();
       } catch (e) {

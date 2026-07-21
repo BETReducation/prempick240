@@ -1920,6 +1920,19 @@ footer span {
 }
 .admin-row.done { border-left: 3px solid var(--accent); }
 .admin-row.edit { grid-template-columns: 76px 1fr auto 1fr 140px 200px; }
+.admin-row.edit.admin-row-head {
+  background: none;
+  border: none;
+  padding: 0 14px;
+  margin-bottom: -2px;
+}
+.admin-row-head span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
 
 .admin-row-comp {
   font-family: 'JetBrains Mono', monospace;

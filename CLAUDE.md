@@ -230,9 +230,3 @@ Consequences:
 - `POST /api/admin/gameweeks` rebuilds each match object, so any field it
   doesn't explicitly copy is destroyed on save. It silently wiped every
   fixture's `date` once. If you add a per-match field, add it there too.
-
-## Carried over but unused
-
-`server.js` still accepts a `legacyPin` on `/api/register` to migrate old
-PIN-based WC26 accounts, and `auth.js` shows the matching form field. There are
-no such accounts in this league — harmless, but safe to strip out.
