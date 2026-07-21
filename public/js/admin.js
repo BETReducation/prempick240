@@ -193,6 +193,7 @@ function renderFixtureEditor(gw) {
   el('gwLabel').value    = gw.label ?? '';
   el('gwDeadline').value = utcISOToUkLocal(gw.lockTime);
   el('gwDeadlineEcho').textContent = gw.lockTime ? `Locks ${fmtUk(gw.lockTime)}` : '';
+  el('saveGwBtn').textContent = 'Save Gameweek';
 
   const matches = (gw.matches && gw.matches.length)
     ? gw.matches
@@ -267,6 +268,9 @@ async function saveGameweek() {
     EDIT_ID = id;
     status.textContent = `Saved — locks ${fmtUk(payload.lockTime)}.`;
     status.className = 'save-status ok';
+    // Flip the button to a "saved" state so it's obvious the save landed.
+    // Editing any field (below) flips it back to "Save Gameweek".
+    el('saveGwBtn').textContent = 'Edit Gameweek';
   } catch (e) {
     status.textContent = 'Failed — ' + e.message;
     status.className = 'save-status err';
@@ -473,6 +477,11 @@ async function boot() {
   el('newGwBtn').addEventListener('click', () => { el('editGw').value = '__new__'; loadGwForEdit('__new__'); });
   el('saveGwBtn').addEventListener('click', saveGameweek);
   el('deleteGwBtn').addEventListener('click', deleteGameweek);
+  // Once saved the button reads "Edit Gameweek"; any edit means there are
+  // unsaved changes again, so flip it back to "Save Gameweek".
+  el('panel-fixtures').addEventListener('input', () => {
+    if (el('saveGwBtn').textContent !== 'Save Gameweek') el('saveGwBtn').textContent = 'Save Gameweek';
+  });
   el('gwDeadline').addEventListener('change', () => {
     const iso = ukLocalToUtcISO(el('gwDeadline').value);
     el('gwDeadlineEcho').textContent = iso ? `Locks ${fmtUk(iso)}` : '';
