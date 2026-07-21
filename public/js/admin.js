@@ -449,7 +449,9 @@ function fillSelects() {
 
 async function refresh() {
   const [gws, res, preds] = await Promise.all([
-    API.gameweeks(), API.results(), API.allPredictions().catch(() => [])
+    // Admin headers so this returns every week, including future ones not yet
+    // revealed to players.
+    adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => [])
   ]);
   GWS = gws;
   RESULTS = res.results || {};

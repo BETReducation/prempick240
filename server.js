@@ -372,11 +372,15 @@ function isMatchLocked(matchId, gws) {
   return isGameweekLocked(found.gameweek);
 }
 
-// The gameweek players are currently predicting: the first one not yet locked,
-// falling back to the most recent gameweek once the season is over.
+// The active gameweek: the first one whose window has not yet closed (see
+// gameweekResetTime). It stays put through its own lock and games — publishing
+// next week's fixtures early does NOT advance it — and only rolls over once
+// this week closes (last kick-off + 2h15m). That roll-over is what reveals the
+// next week to players and resets the weekly tally. Falls back to the most
+// recent gameweek once every week has closed.
 function currentGameweek(gws) {
   const list = gws.gameweeks || [];
-  return list.find(gw => !isGameweekLocked(gw)) || list[list.length - 1] || null;
+  return list.find(gw => Date.now() < gameweekResetTime(gw)) || list[list.length - 1] || null;
 }
 
 function gameweekComplete(gw, results) {
@@ -384,13 +388,14 @@ function gameweekComplete(gw, results) {
   return matches.length > 0 && matches.every(m => results[m.id] && results[m.id].played);
 }
 
-// When the weekly prediction count on the ranking table should reset to 0:
-// 15 minutes after the final whistle of the last game, i.e. ~2 hours after its
-// kick-off (105 min play + 15 min buffer). The last kick-off is the latest
-// per-match `kickoff` time, falling back to the gameweek deadline when none are
-// set. Returns Infinity if the week carries no timing at all (so it stays
-// visible rather than vanishing).
-const WEEK_RESET_OFFSET_MS = 120 * 60 * 1000;
+// When a gameweek's window closes: 2 hours 15 minutes after the last game
+// kicks off (roughly final whistle + 30 min). This one instant drives two
+// things — the weekly prediction count on the ranking table resets to 0, and
+// the *next* week becomes the active one (revealed to players, see
+// currentGameweek). The last kick-off is the latest per-match `kickoff` time,
+// falling back to the gameweek deadline when none are set. Returns Infinity if
+// the week carries no timing at all, so it never closes by accident.
+const WEEK_RESET_OFFSET_MS = 135 * 60 * 1000;
 function gameweekResetTime(gw) {
   if (!gw) return Infinity;
   const times = [];
@@ -417,6 +422,35 @@ function requireAdmin(req, res, next) {
     }
   }
   return res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Non-blocking form of the same check — returns true/false instead of gating a
+// route. Used to decide whether a request may see future (not-yet-revealed)
+// gameweeks: admins always can, players only up to the active week.
+function isAdminRequest(req) {
+  if (req.headers['x-admin-password'] === ADMIN_PASSWORD) return true;
+  const token = req.headers['x-session-token'];
+  if (token) {
+    const s = sessions.get(token);
+    if (s && Date.now() <= s.expiresAt) {
+      const data = readJSON(PREDICTIONS_FILE, { users: [] });
+      const user = data.users.find(u => u.id === s.userId);
+      if (user?.isAdmin) return true;
+    }
+  }
+  return false;
+}
+
+// Gameweeks a caller may see. Admins see everything; players see up to and
+// including the active week — future weeks stay hidden until the active week
+// closes and rolls over to them.
+function visibleGameweeks(gws, isAdmin) {
+  const list = gws.gameweeks || [];
+  if (isAdmin) return list;
+  const active = currentGameweek(gws);
+  const activeIdx = active ? list.findIndex(g => g.id === active.id) : -1;
+  if (activeIdx < 0) return list;
+  return list.filter((_, i) => i <= activeIdx);
 }
 
 // ── Admin routes ───────────────────────────────────────────────────────────────
@@ -516,11 +550,12 @@ app.post('/api/access-codes/reinstate', requireAdmin, (req, res) => {
 app.get('/api/gameweeks', (req, res) => {
   const gws     = readGameweeks();
   const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
+  const visible = visibleGameweeks(gws, isAdminRequest(req));
   const out = {
     season: gws.season || '',
     praise: gws.praise || {},
     currentGameweekId: currentGameweek(gws)?.id || null,
-    gameweeks: (gws.gameweeks || []).map(gw => ({
+    gameweeks: visible.map(gw => ({
       ...gw,
       locked:   isGameweekLocked(gw),
       complete: gameweekComplete(gw, results),

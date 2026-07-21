@@ -142,6 +142,31 @@ reflects it.
 Before a week locks, `/api/predictions` **omits** other players' picks for that
 week. Don't remove that filter; it's what stops players copying each other.
 
+## The active gameweek — reveal & weekly-tally reset
+
+`currentGameweek()` is the **active** week: the first one whose window has not
+yet closed. A week's window closes at `gameweekResetTime()` — **2h15m after its
+last kick-off** (the latest per-match `kickoff`, falling back to the week's
+`lockTime` when none are set; `Infinity` if the week has no timing, so it never
+closes by accident). Set per-fixture kick-off times in the admin Fixtures panel.
+
+Two things key off this single instant:
+
+- **Reveal.** `/api/gameweeks` hides weeks *after* the active one from players
+  (`visibleGameweeks`) — so you can publish next week's fixtures early and
+  nobody sees them. The moment the active week closes it rolls to the next,
+  which appears on the predictions page. Admins always get every week
+  (`isAdminRequest`); the admin page fetches `/api/gameweeks` via `adminFetch`
+  to include them. Past weeks stay visible to everyone as history.
+- **Weekly tally.** The ranking table's "This week" column
+  (`weeklyPredictions`) counts predictions for the active week only. When the
+  active week rolls over, the count is naturally that of the new (empty) week —
+  i.e. it resets to 0 until players start predicting. Distinct from
+  `predictionsEntered`, the season total kept for the profile page.
+
+Publishing week 2/3 does **not** advance the active week or reset the tally —
+only time does. Weeks are assumed chronological (they're sorted by `number`).
+
 ## Save / Edit state on the Fixtures page
 
 `EDITING` in `fixtures.js` drives it. A week with nothing saved opens in entry
