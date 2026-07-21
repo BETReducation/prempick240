@@ -392,6 +392,24 @@ function gameweekComplete(gw, results) {
   const matches = gw.matches || [];
   return matches.length > 0 && matches.every(m => results[m.id] && results[m.id].played);
 }
+
+// When the weekly prediction count on the ranking table should reset to 0:
+// 15 minutes after the final whistle of the last game, i.e. ~2 hours after its
+// kick-off (105 min play + 15 min buffer). The last kick-off is the latest
+// per-match `kickoff` time, falling back to the gameweek deadline when none are
+// set. Returns Infinity if the week carries no timing at all (so it stays
+// visible rather than vanishing).
+const WEEK_RESET_OFFSET_MS = 120 * 60 * 1000;
+function gameweekResetTime(gw) {
+  if (!gw) return Infinity;
+  const times = [];
+  for (const m of gw.matches || []) {
+    if (m.kickoff) { const t = new Date(m.kickoff).getTime(); if (!isNaN(t)) times.push(t); }
+  }
+  if (gw.lockTime) { const t = new Date(gw.lockTime).getTime(); if (!isNaN(t)) times.push(t); }
+  if (!times.length) return Infinity;
+  return Math.max(...times) + WEEK_RESET_OFFSET_MS;
+}
 // ── Admin middleware ───────────────────────────────────────────────────────────
 
 function requireAdmin(req, res, next) {
@@ -543,6 +561,9 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
 
   if (matches.some(m => !m.home || !m.away))
     return res.status(400).json({ error: 'Every match needs a home and an away team' });
+
+  if (matches.some(m => m.kickoff && isNaN(new Date(m.kickoff).getTime())))
+    return res.status(400).json({ error: 'kickoff must be a valid ISO date' });
 
   const clean = matches.map((m, i) => {
     return {
@@ -926,6 +947,13 @@ function calcLeaderboard() {
   const results = readJSON(RESULTS_FILE,     { results: {} }).results || {};
   const gws     = readGameweeks();
 
+  // The week whose prediction counts the ranking table shows: the one players
+  // are currently predicting (or the most recent). Its counts stay visible
+  // through lock and the games, then reset to 0 once its window closes.
+  const current      = currentGameweek(gws);
+  const currentOpen  = current && Date.now() < gameweekResetTime(current);
+  const currentMatchIds = currentOpen ? (current.matches || []).map(m => m.id) : [];
+
   return users.map(user => {
     const preds = user.predictions || {};
     let resultPoints = 0, scorePoints = 0, played = 0;
@@ -969,7 +997,8 @@ function calcLeaderboard() {
       resultPoints, scorePoints,
       matchPoints, perGameweek,
       matchesScored: played,
-      predictionsEntered: Object.keys(preds).length
+      predictionsEntered: Object.keys(preds).length,
+      weeklyPredictions: currentMatchIds.filter(id => preds[id]).length
     };
   }).sort((a, b) =>
     b.resultPoints - a.resultPoints ||

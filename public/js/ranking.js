@@ -20,7 +20,7 @@ function renderTable(board, gws, meId) {
         <th class="col-pts" title="1 point per correct result">Results</th>
         <th class="col-pts" title="Exact scorelines — tie-breaker">Exact</th>
         <th class="col-num" title="Weeks with all six results correct">Perfect weeks</th>
-        <th class="col-num">Predictions</th>
+        <th class="col-num" title="Predictions entered for the current gameweek">This week</th>
       </tr>
     </thead>
     <tbody>
@@ -35,7 +35,7 @@ function renderTable(board, gws, meId) {
           <td class="col-pts strong">${p.resultPoints}</td>
           <td class="col-pts">${p.scorePoints}</td>
           <td class="col-num">${perfect ? `<span class="perfect-badge">${perfect}</span>` : '—'}</td>
-          <td class="col-num muted">${p.predictionsEntered}</td>
+          <td class="col-num muted">${p.weeklyPredictions ?? 0}</td>
         </tr>`;
       }).join('') : `<tr><td colspan="6" class="empty">No players yet.</td></tr>`}
     </tbody>`;

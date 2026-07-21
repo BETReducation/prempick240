@@ -1919,7 +1919,7 @@ footer span {
   border-radius: var(--radius);
 }
 .admin-row.done { border-left: 3px solid var(--accent); }
-.admin-row.edit { grid-template-columns: 76px 1fr auto 1fr 150px; }
+.admin-row.edit { grid-template-columns: 76px 1fr auto 1fr 140px 200px; }
 
 .admin-row-comp {
   font-family: 'JetBrains Mono', monospace;
