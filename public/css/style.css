@@ -205,7 +205,7 @@ nav.site-nav {
   font-size: 14px;
   color: var(--muted);
   margin-bottom: 24px;
-  max-width: 500px;
+  max-width: 760px;
   line-height: 1.65;
 }
 
@@ -1249,7 +1249,7 @@ nav.site-nav {
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 footer {
   border-top: 1px solid var(--border);
-  padding: 20px 2rem;
+  padding: 32px 2rem 20px;
   max-width: 760px;
   margin: 0 auto;
   display: flex;
@@ -2279,6 +2279,11 @@ input.score-input:disabled { opacity: 0.5; }
 #praiseSummary .subsection-title { margin-top: 1.25rem; }
 #praiseSummary .subsection-title:first-child { margin-top: 0; }
 #praiseSummary .stat-row { margin-bottom: 0; }
+
+/* Give the weekly praise ledger (and its empty state) room to breathe between
+   the Overall stats cards above and the footer rule below. */
+#praiseWeekly { margin-top: 1.75rem; margin-bottom: 2.5rem; }
+#praiseWeekly .empty { margin: 0; }
 
 /* ── Logo page ───────────────────────────────────────────────────────────── */
 

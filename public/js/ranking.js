@@ -30,7 +30,7 @@ function renderTable(board, gws, meId) {
         <tr class="${p.id === meId ? 'is-me' : ''}">
           <td class="col-pos">${i + 1}</td>
           <td class="col-player">
-            <a href="member.html?id=${encodeURIComponent(p.id)}">${esc(p.displayName || p.name)}</a>
+            ${esc(p.displayName || p.name)}
           </td>
           <td class="col-pts strong">${p.resultPoints}</td>
           <td class="col-pts">${p.scorePoints}</td>
