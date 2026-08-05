@@ -4,6 +4,7 @@ const path       = require('path');
 const cors       = require('cors');
 const crypto     = require('crypto');
 const nodemailer = require('nodemailer');
+const { initExcelSync, scheduleExcelSync } = require('./excel');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,10 @@ const RESULTS_FILE     = path.join(PERSISTENT_DIR, 'results.json');
 const ACCESS_CODES_FILE = path.join(PERSISTENT_DIR, 'access-codes.json');
 const SESSIONS_FILE     = path.join(PERSISTENT_DIR, 'sessions.json');
 const LEADERBOARD_PREV_FILE  = path.join(PERSISTENT_DIR, 'leaderboard-prev.json');
+const POSITION_HISTORY_FILE  = path.join(PERSISTENT_DIR, 'position-history.json');
+const CUP_FILE                = path.join(PERSISTENT_DIR, 'cup.json');
+const INTERNATIONAL_FILE      = path.join(PERSISTENT_DIR, 'international-league.json');
+const EXCEL_FILE               = path.join(PERSISTENT_DIR, 'PremPick240-League.xlsx');
 
 const ADMIN_EMAIL = 'gbyatt@gmail.com';
 
@@ -626,6 +631,7 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
   if (idx >= 0) gws.gameweeks[idx] = next; else gws.gameweeks.push(next);
   gws.gameweeks.sort((a, b) => (a.number || 0) - (b.number || 0));
   writeJSON(GAMEWEEKS_FILE, gws);
+  scheduleExcelSync();
   res.json({ success: true, gameweek: next });
 });
 
@@ -635,6 +641,7 @@ app.delete('/api/admin/gameweeks/:gwId', requireAdmin, (req, res) => {
   gws.gameweeks = (gws.gameweeks || []).filter(g => g.id !== req.params.gwId);
   if (gws.gameweeks.length === before) return res.status(404).json({ error: 'Gameweek not found' });
   writeJSON(GAMEWEEKS_FILE, gws);
+  scheduleExcelSync();
   res.json({ success: true });
 });
 // ── Users / registration ───────────────────────────────────────────────────────
@@ -715,6 +722,7 @@ app.post('/api/register', (req, res) => {
     return res.status(500).json({ error: 'Server error saving your account. Please try again.' });
   }
 
+  scheduleExcelSync();   // ask #2: a new player is just another row next rebuild
   const token = createSession(userId);
   res.json({ userId, name, token });
 });
@@ -874,6 +882,7 @@ app.post('/api/predictions/:userId', (req, res) => {
   user.predictions  = updated;
   user.lastUpdated  = new Date().toISOString();
   writeJSON(PREDICTIONS_FILE, data);
+  scheduleExcelSync();   // ask #1: predictions land in the workbook automatically
   res.json({ success: true, saved: Object.keys(updated).length, rejected });
 });
 // ── Admin: override any player's prediction ────────────────────────────────────
@@ -890,6 +899,7 @@ app.post('/api/admin/predictions/:userId/:matchId', requireAdmin, (req, res) => 
   user.predictions[req.params.matchId] = { home: h, away: a };
   user.lastUpdated = new Date().toISOString();
   writeJSON(PREDICTIONS_FILE, data);
+  scheduleExcelSync();
   res.json({ success: true });
 });
 
@@ -927,6 +937,8 @@ app.post('/api/results', requireAdmin, (req, res) => {
   if (etAway != null) entry.etAway = parseInt(etAway);
   data.results[matchId] = entry;
   writeJSON(RESULTS_FILE, data);
+  recordPositionHistoryIfComplete(readGameweeks(), data.results);
+  scheduleExcelSync();
   res.json({ success: true });
 });
 
@@ -935,6 +947,7 @@ app.delete('/api/results/:matchId', requireAdmin, (req, res) => {
   const data = readJSON(RESULTS_FILE, { results: {} });
   delete data.results[req.params.matchId];
   writeJSON(RESULTS_FILE, data);
+  scheduleExcelSync();
   res.json({ success: true });
 });
 
@@ -1102,6 +1115,256 @@ function calcPraise() {
 }
 
 app.get('/api/praise', (req, res) => res.json(calcPraise()));
+
+// ── Position History ───────────────────────────────────────────────────────────
+//
+// One position snapshot per completed gameweek, recorded the moment that
+// week's last result lands — never overwritten afterwards, so this is real
+// history rather than "current minus one edit" (which is all the older
+// leaderboard-prev.json single snapshot gave us).
+
+function readPositionHistory() {
+  return readJSON(POSITION_HISTORY_FILE, { weeks: {} });
+}
+
+// Called right after any result is saved/deleted. Records the current
+// standings against every gameweek that has just become complete and has no
+// snapshot yet. Weeks are assumed to be played in order, so "standings right
+// now" is a fair reading of "standings after this week".
+function recordPositionHistoryIfComplete(gws, results) {
+  const posData = readPositionHistory();
+  let changed = false;
+  for (const gw of gws.gameweeks || []) {
+    if (posData.weeks[gw.id]) continue;
+    if (!gameweekComplete(gw, results)) continue;
+    const board = calcLeaderboard();
+    const positions = {};
+    board.forEach((p, i) => { positions[p.id] = i + 1; });
+    posData.weeks[gw.id] = positions;
+    changed = true;
+  }
+  if (changed) writeJSON(POSITION_HISTORY_FILE, posData);
+}
+
+function calcPositionHistory() {
+  const gws   = readGameweeks();
+  const board = calcLeaderboard();
+  const posData = readPositionHistory();
+
+  const completedIds = (gws.gameweeks || [])
+    .slice().sort((a, b) => a.number - b.number)
+    .map(g => g.id)
+    .filter(id => posData.weeks[id]);
+  const lastCompletedId = completedIds[completedIds.length - 1];
+  const lastPositions = lastCompletedId ? posData.weeks[lastCompletedId] : null;
+
+  const currentPos = {};
+  board.forEach((p, i) => { currentPos[p.id] = i + 1; });
+
+  return board.map(p => {
+    const history = completedIds.map(gameweekId => ({
+      gameweekId, position: posData.weeks[gameweekId][p.id] ?? null
+    }));
+    const known = [currentPos[p.id], ...history.map(h => h.position)].filter(x => x != null);
+    // Positive movement = moved UP the table (fewer = better), matching the
+    // original workbook's up=red/down=blue convention on the frontend.
+    const movement = lastPositions && lastPositions[p.id] != null
+      ? lastPositions[p.id] - currentPos[p.id]
+      : 0;
+    return {
+      id: p.id, name: p.name, displayName: p.displayName,
+      position: currentPos[p.id],
+      best: Math.min(...known), worst: Math.max(...known),
+      movement, history
+    };
+  });
+}
+
+app.get('/api/position-history', (req, res) => res.json(calcPositionHistory()));
+
+// ── FP Cup ─────────────────────────────────────────────────────────────────────
+//
+// A cup tie needs no fixture of its own: the "score" is simply each player's
+// resultPoints in whichever gameweek the tie is assigned to. A draw is
+// resolved by adding a replay gameweek to the tie (see admin Cup tab); until
+// then it's flagged needsReplay so admin knows to act on it.
+
+function readCup() { return readJSON(CUP_FILE, { rounds: [] }); }
+
+function calcCup() {
+  const cup   = readCup();
+  const board = calcLeaderboard();
+  const byId  = {};
+  board.forEach(p => { byId[p.id] = p; });
+  const label = id => id ? (byId[id] ? (byId[id].displayName || byId[id].name) : 'Unknown player') : 'BYE';
+
+  const rounds = (cup.rounds || []).map(round => {
+    const ties = (round.ties || []).map(tie => {
+      if (!tie.playerB) {
+        return { ...tie, playerAName: label(tie.playerA), playerBName: 'BYE', winner: tie.playerA, winnerName: label(tie.playerA) };
+      }
+      const weeks = [round.gameweekId, ...(tie.replayGameweekIds || [])];
+      let scoreA = null, scoreB = null, winner = null, pending = false, needsReplay = false;
+      for (const wk of weeks) {
+        const a = byId[tie.playerA]?.perGameweek[wk];
+        const b = byId[tie.playerB]?.perGameweek[wk];
+        if (!a || !b || a.played === 0 || b.played === 0) { pending = true; scoreA = scoreB = null; break; }
+        scoreA = a.resultPoints; scoreB = b.resultPoints;
+        if (scoreA !== scoreB) { winner = scoreA > scoreB ? tie.playerA : tie.playerB; break; }
+      }
+      if (!pending && winner === null && scoreA !== null) needsReplay = true;
+      return {
+        ...tie,
+        playerAName: label(tie.playerA), playerBName: label(tie.playerB),
+        scoreA, scoreB, winner, winnerName: winner ? label(winner) : null,
+        pending, needsReplay
+      };
+    });
+    return { ...round, ties };
+  });
+
+  return { rounds };
+}
+
+app.get('/api/cup', (req, res) => res.json(calcCup()));
+
+// The raw, editable structure (ids only, no computed scores) — what the
+// admin Cup tab loads into its form.
+app.get('/api/admin/cup', requireAdmin, (req, res) => res.json(readCup()));
+
+app.post('/api/admin/cup', requireAdmin, (req, res) => {
+  const rounds = req.body.rounds;
+  if (!Array.isArray(rounds)) return res.status(400).json({ error: 'rounds array required' });
+  writeJSON(CUP_FILE, { rounds });
+  scheduleExcelSync();
+  res.json({ success: true });
+});
+
+// ── International League ────────────────────────────────────────────────────────
+//
+// Same mechanic as the cup: each group matchday and each knockout leg is
+// mapped to a gameweek, and the two players' resultPoints in that gameweek
+// are the "goalscore". The gameweeks themselves are normal gameweeks — admin
+// tags their matches comp:"INTL" so the fixture list reads as internationals;
+// results are entered exactly the same way as any other week.
+
+function readInternational() {
+  return readJSON(INTERNATIONAL_FILE, { groups: [], knockout: [] });
+}
+
+function goalsFor(byId, playerId, gameweekId) {
+  const stats = byId[playerId]?.perGameweek[gameweekId];
+  return stats && stats.played > 0 ? stats.resultPoints : null;
+}
+
+function calcInternationalLeague() {
+  const data  = readInternational();
+  const board = calcLeaderboard();
+  const byId  = {};
+  board.forEach(p => { byId[p.id] = p; });
+  const label = id => byId[id] ? (byId[id].displayName || byId[id].name) : 'Unknown player';
+
+  const groups = (data.groups || []).map(group => {
+    const table = {};
+    group.playerIds.forEach(id => {
+      table[id] = { id, name: label(id), played: 0, won: 0, drawn: 0, lost: 0, for: 0, against: 0 };
+    });
+    for (const md of group.matchdays || []) {
+      for (const fx of md.fixtures || []) {
+        const gf = goalsFor(byId, fx.home, md.gameweekId);
+        const ga = goalsFor(byId, fx.away, md.gameweekId);
+        if (gf == null || ga == null) continue;
+        const h = table[fx.home], a = table[fx.away];
+        if (!h || !a) continue;
+        h.played++; a.played++;
+        h.for += gf; h.against += ga;
+        a.for += ga; a.against += gf;
+        if (gf > ga)      { h.won++;  a.lost++; }
+        else if (gf < ga) { a.won++;  h.lost++; }
+        else              { h.drawn++; a.drawn++; }
+      }
+    }
+    const rows = Object.values(table).map(r => ({
+      ...r, gd: r.for - r.against, points: r.won * 3 + r.drawn
+    })).sort((x, y) => y.points - x.points || y.gd - x.gd || y.for - x.for);
+    return { id: group.id, name: group.name, table: rows };
+  });
+
+  const knockout = (data.knockout || []).map(round => {
+    const ties = (round.ties || []).map(tie => {
+      const legWeeks = (round.legs || []).map(l => l.gameweekId).filter(Boolean);
+      let aggA = 0, aggB = 0, pending = false, any = false;
+      for (const wk of legWeeks) {
+        const gf = goalsFor(byId, tie.playerA, wk);
+        const ga = goalsFor(byId, tie.playerB, wk);
+        if (gf == null || ga == null) { pending = true; continue; }
+        aggA += gf; aggB += ga; any = true;
+      }
+      const winner = (!pending && any && aggA !== aggB) ? (aggA > aggB ? tie.playerA : tie.playerB) : null;
+      return {
+        ...tie, playerAName: label(tie.playerA), playerBName: label(tie.playerB),
+        aggA: any ? aggA : null, aggB: any ? aggB : null,
+        winner, winnerName: winner ? label(winner) : null,
+        pending: pending || !any
+      };
+    });
+    return { name: round.name, legs: round.legs, ties };
+  });
+
+  const qualification = board.slice().sort((a, b) =>
+    b.resultPoints - a.resultPoints || b.scorePoints - a.scorePoints
+  );
+
+  return { groups, knockout, qualification };
+}
+
+app.get('/api/international-league', (req, res) => res.json(calcInternationalLeague()));
+
+// The raw, editable structure — what the admin International tab loads.
+app.get('/api/admin/international-league', requireAdmin, (req, res) => res.json(readInternational()));
+
+app.post('/api/admin/international-league', requireAdmin, (req, res) => {
+  const { groups, knockout } = req.body;
+  if (!Array.isArray(groups) || !Array.isArray(knockout))
+    return res.status(400).json({ error: 'groups and knockout arrays required' });
+  writeJSON(INTERNATIONAL_FILE, { groups, knockout });
+  scheduleExcelSync();
+  res.json({ success: true });
+});
+
+// ── Excel mirror ───────────────────────────────────────────────────────────────
+//
+// The website is the calculation engine; this workbook is a generated,
+// always-current mirror of what it already computes — see excel.js and
+// CLAUDE.md for why the cells are values rather than formulas.
+
+function buildExcelState() {
+  const gws     = readGameweeks();
+  const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
+  const resolvedGws = {
+    ...gws,
+    gameweeks: (gws.gameweeks || []).map(gw => ({ ...gw, complete: gameweekComplete(gw, results) }))
+  };
+  return {
+    users: readJSON(PREDICTIONS_FILE, { users: [] }).users,
+    gws: resolvedGws,
+    board: calcLeaderboard(),
+    positionHistory: calcPositionHistory(),
+    cup: calcCup(),
+    intl: calcInternationalLeague()
+  };
+}
+
+initExcelSync(buildExcelState, EXCEL_FILE);
+
+app.get('/api/admin/export-xlsx', requireAdmin, (req, res) => {
+  if (!fs.existsSync(EXCEL_FILE)) {
+    scheduleExcelSync();
+    return res.status(202).json({ error: 'Workbook is being generated for the first time — try again in a few seconds.' });
+  }
+  res.download(EXCEL_FILE, 'PremPick240-League.xlsx');
+});
+
 // ── Profile ────────────────────────────────────────────────────────────────────
 
 app.get('/api/profile/:userId', (req, res) => {
@@ -1111,6 +1374,7 @@ app.get('/api/profile/:userId', (req, res) => {
   const board = calcLeaderboard();
   const rank  = board.findIndex(u => u.id === req.params.userId) + 1;
   const entry = board.find(u => u.id === req.params.userId) || {};
+  const posHistory = calcPositionHistory().find(p => p.id === req.params.userId);
   res.json({
     id: user.id, name: user.name,
     displayName: user.displayName || user.name,
@@ -1123,7 +1387,9 @@ app.get('/api/profile/:userId', (req, res) => {
       rank, totalPlayers: board.length,
       correctResults:     entry.correctResults     || 0,
       correctScores:      entry.correctScores      || 0,
-      predictionsEntered: entry.predictionsEntered || 0
+      predictionsEntered: entry.predictionsEntered || 0,
+      bestPosition:       posHistory?.best  ?? rank,
+      worstPosition:      posHistory?.worst ?? rank
     },
     matchPoints: entry.matchPoints || {}
   });

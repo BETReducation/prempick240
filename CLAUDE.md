@@ -23,8 +23,10 @@ design system, different domain model.
 | `public/index.html` | **Predictions** — the front page. This week's six fixtures + prediction entry. Past weeks via tabs. Deliberately shows no results; those live on Ranking. |
 | `public/ranking.html` | **Ranking** — season table + praise ledger |
 | `public/member.html` | Player profile (display name, bio, avatar, stats) |
-| `public/admin.html` | **Admin** — publish a week's fixtures, enter results. Linked in the nav for admin accounts only. |
+| `public/admin.html` | **Admin** — publish a week's fixtures, enter results, manage the Cup and International League, download the League Workbook. Linked in the nav for admin accounts only. |
 | `public/reset.html` | Password reset landing page (email token) |
+| `public/cup.html` | **FP Cup** — read-only knockout bracket |
+| `public/international.html` | **International League** — group tables, knockout, qualification standings |
 
 Login is a modal injected by `public/js/auth.js`, present on every page — same
 flow as WC26 (email + password, invite code required for new accounts).
@@ -61,7 +63,11 @@ flow as WC26 (email + password, invite code required for new accounts).
 
 Runtime state (gitignored, lives on the Railway volume in production):
 `predictions.json`, `results.json`, `access-codes.json`, `sessions.json`,
-`leaderboard-prev.json`.
+`leaderboard-prev.json`, `position-history.json` (one position snapshot per
+completed gameweek, never overwritten), `cup.json` (FP Cup rounds/ties, ids
+only — scores are always derived, never stored), `international-league.json`
+(groups/matchdays/knockout, same ids-only shape), `PremPick240-League.xlsx`
+(the generated Excel mirror — see "Excel mirror" below).
 
 ## Scoring
 
@@ -113,7 +119,7 @@ tracking the player count.
 
 ## Admin page
 
-`public/admin.html` + `js/admin.js`. Three panels:
+`public/admin.html` + `js/admin.js`. Five panels:
 
 - **Results** — pick a gameweek, type scores, save. Partial entry is fine; praise
   is only awarded once all six have results. Shows who won the week's praise as
@@ -127,10 +133,44 @@ tracking the player count.
   fixtures. The deadline input is **UK wall-clock**, converted to UTC on save by
   `ukLocalToUtcISO()`, which iterates against `Europe/London` rather than
   trusting the browser's zone. Verified across BST, GMT and both clock-change
-  days — the season spans the October change, so this matters.
+  days — the season spans the October change, so this matters. A "Download
+  League Workbook" button here streams the current Excel mirror (see below).
+  `comp` now also accepts `"INTL"` for international-fixture gameweeks that
+  feed the International League.
+- **Cup** — build the FP Cup knockout bracket: rounds, each assigned a
+  gameweek, and ties pairing two players (or a bye). A tie needs no fixture of
+  its own — its "score" is simply both players' `resultPoints` in the round's
+  gameweek (see `calcCup()` in `server.js`). A draw is flagged `needsReplay`;
+  add a replay gameweek to the tie and it resolves automatically.
+- **International** — build the International League: groups of players with
+  round-robin matchdays (each mapped to an `INTL`-tagged gameweek), plus a
+  two-legged knockout. Matchday "goals" are the two players' `resultPoints`
+  that week (`calcInternationalLeague()`). Qualification is just the current
+  season standings, shown for reference when seeding groups — it isn't frozen
+  at draw time.
 
 Auth: `requireAdmin` accepts an admin user's session token, so a signed-in admin
 needs no password. The password box is a fallback and stores to `sessionStorage`.
+
+## Excel mirror
+
+`excel.js` renders a generated `.xlsx` workbook (`PremPick240-League.xlsx`, on
+`PERSISTENT_DIR` like the other runtime files) that mirrors everything the
+server already computes: League Table, Form Guide, Manager Of The Week, Week
+Record, raw Predictions, Position History, FP Cup, International League +
+Qualification. **The server is the calculation engine — this file is a report,
+not a template.** Every cell is a value, not a formula; editing the workbook
+has no effect on the site. This is a deliberate exception to "always use
+formulas" — the workbook is regenerated from scratch on every sync, so there's
+nothing for a formula to preserve.
+
+`scheduleExcelSync()` is called after every prediction save, result
+save/delete, gameweek publish, and new registration. Calls are debounced
+(~3s) so a burst of activity before a deadline collapses into one rebuild
+rather than one per request. It rebuilds the *whole* workbook from current
+JSON state each time — a new player is just another row next sync, no
+range-patching logic needed. Download it from Admin → Fixtures → "Download
+League Workbook" (`GET /api/admin/export-xlsx`).
 
 ## Prediction locking
 
@@ -210,6 +250,12 @@ submits — this was a real bug, not a hypothetical.
 | DELETE | `/api/results/:matchId` | Admin | Remove a result |
 | POST | `/api/admin/gameweeks` | Admin | Create or update a gameweek |
 | DELETE | `/api/admin/gameweeks/:gwId` | Admin | Delete a gameweek |
+| GET | `/api/position-history` | — | Position per completed gameweek, best/worst, movement |
+| GET | `/api/cup` | — | FP Cup bracket with computed scores/winners |
+| GET/POST | `/api/admin/cup` | Admin | Read/write the raw bracket structure |
+| GET | `/api/international-league` | — | Groups, knockout, qualification, all computed |
+| GET/POST | `/api/admin/international-league` | Admin | Read/write the raw groups/knockout structure |
+| GET | `/api/admin/export-xlsx` | Admin | Download the current Excel mirror |
 
 Plus the auth/profile routes carried over unchanged from WC26 (`/api/register`,
 `/api/logout`, `/api/me`, `/api/forgot-password`, `/api/reset-password`,
@@ -249,9 +295,17 @@ Consequences:
   `input.score-input`; the older `.score-input input[type="text"]` rules are
   WC26 leftovers that match nothing here.
 - The competition badge renders only for non-PL fixtures. PL is the default and
-  a badge on every row was noise; CH and CUP still stand out.
+  a badge on every row was noise; CH, CUP and INTL still stand out.
 - `parseInt(x) || fallback` is a trap where 0 is valid (gameweek numbers,
   scores) — use `Number.isInteger` / explicit `isNaN` checks.
 - `POST /api/admin/gameweeks` rebuilds each match object, so any field it
   doesn't explicitly copy is destroyed on save. It silently wiped every
   fixture's `date` once. If you add a per-match field, add it there too.
+- **The FP Cup and International League store only structure (ids), never
+  scores.** `calcCup()`/`calcInternationalLeague()` always derive scores from
+  `calcLeaderboard()`'s `perGameweek` at request time. Don't add a "score"
+  field to `cup.json`/`international-league.json` — it would drift from the
+  real predictions the moment a result is corrected.
+- There is no Bundesliga-style side league in this app, by design — it existed
+  in the FP Liga spreadsheet this project was modelled on and was deliberately
+  dropped when the International League replaced its Copa del Rey.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ranking · PremPick240</title>
+  <title>Cup · PremPick240</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,8 +16,8 @@
   <a href="index.html" class="nav-logo">PremPick240 <span>Prediction League</span></a>
   <div class="nav-links">
     <a href="index.html">Predictions</a>
-    <a href="ranking.html" class="active">Ranking</a>
-    <a href="cup.html">Cup</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="cup.html" class="active">Cup</a>
     <a href="international.html">International</a>
     <a href="member.html" id="navMemberLink" class="nav-member-link" style="display:none;"></a>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
@@ -45,58 +45,24 @@
   <p>Loading the table…</p>
 </div>
 
-<div id="rankingApp" style="display:none;">
+<div id="cupApp" style="display:none;">
 
   <div class="section section--no-bottom">
-    <p class="section-label" id="seasonLabel">Season</p>
-    <h2 class="section-title">The Table</h2>
-    <p class="section-desc">Ranked on <strong>results</strong> called correctly. <strong>Exact</strong> scorelines are tracked separately and break any tie.</p>
+    <p class="section-label">Knockout</p>
+    <h2 class="section-title">FP Cup</h2>
+    <p class="section-desc">A tie's score is simply both players' results-correct count in that
+      round's gameweek — no extra fixtures to predict. A draw is settled by a replay.</p>
   </div>
 
   <div class="section section--flush section--wide">
-    <div class="table-wrap">
-      <table class="ranking-table" id="rankingTable"></table>
-    </div>
-  </div>
-
-  <div class="section section--no-bottom">
-    <p class="section-label">Recent Form</p>
-    <h2 class="section-title">Form Guide</h2>
-    <p class="section-desc">Results correct over each player's last 6 played gameweeks.</p>
-  </div>
-  <div class="section section--flush section--wide">
-    <div class="table-wrap">
-      <table class="ranking-table" id="formGuideTable"></table>
-    </div>
-  </div>
-
-  <div class="section section--no-bottom">
-    <p class="section-label">Weekly Standout</p>
-    <h2 class="section-title">Manager Of The Week</h2>
-  </div>
-  <div class="section section--flush section--wide">
-    <div id="motwList"></div>
-  </div>
-
-  <div class="section section--no-bottom">
-    <p class="section-label">Bragging Rights</p>
-    <h2 class="section-title">Praise</h2>
-    <p class="section-desc">Call all six results in a week and you share that week's praise. Weeks nobody wins roll their praise into the following week.</p>
-  </div>
-
-  <!-- End-of-season split is deliberately not shown: the weekly pot is what
-       players care about. Re-introduce nearer April — /api/praise still
-       returns seasonEnd, so it's a display change only. -->
-  <div class="section section--flush section--wide">
-    <div class="praise-summary" id="praiseSummary"></div>
-    <div id="praiseWeekly"></div>
+    <div id="cupRounds"></div>
   </div>
 
 </div>
 
 <footer>
   <span>PremPick240 Prediction League</span>
-  <span>1 pt per correct result · exact scores tracked separately</span>
+  <span>Knockout cup — ties decided by results-correct count</span>
 </footer>
 
 <script>
@@ -114,6 +80,6 @@
 </script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
-<script src="js/ranking.js"></script>
+<script src="js/cup.js"></script>
 </body>
 </html>

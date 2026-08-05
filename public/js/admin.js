@@ -9,9 +9,12 @@ let RESULTS  = {};     // matchId -> { home, away, played }
 let EDIT_ID  = null;   // gameweek id being edited on the Fixtures panel
 let ADMIN_PW = sessionStorage.getItem('pp240_adminpw') || null;
 let ALL_PREDS = [];    // every player's predictions — locked weeks only
+let USERS     = [];    // /api/users — { id, name } for cup/international player pickers
+let CUP       = { rounds: [] };
+let INTL      = { groups: [], knockout: [] };
 
-const COMPS = ['PL', 'CH', 'CUP'];
-const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup' };
+const COMPS = ['PL', 'CH', 'CUP', 'INTL'];
+const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup', INTL: 'International' };
 
 function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
@@ -448,19 +451,300 @@ function fillSelects() {
 }
 
 async function refresh() {
-  const [gws, res, preds] = await Promise.all([
+  const [gws, res, preds, users, cup, intl] = await Promise.all([
     // Admin headers so this returns every week, including future ones not yet
     // revealed to players.
-    adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => [])
+    adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => []),
+    API.users().catch(() => []),
+    adminFetch('/api/admin/cup').catch(() => ({ rounds: [] })),
+    adminFetch('/api/admin/international-league').catch(() => ({ groups: [], knockout: [] }))
   ]);
   GWS = gws;
   RESULTS = res.results || {};
   ALL_PREDS = preds || [];
+  USERS = users || [];
+  CUP  = { rounds: (cup.rounds || []).map(r => ({ ...r, ties: (r.ties || []).map(t => ({ replayGameweekIds: [], ...t })) })) };
+  INTL = {
+    groups: (intl.groups || []).map(g => ({ playerIds: [], matchdays: [], ...g })),
+    knockout: (intl.knockout || []).map(r => ({ legs: [null, null], ties: [], ...r }))
+  };
   fillSelects();
   renderResultPanel();
   await renderPraisePreview();
   loadGwForEdit(el('editGw').value);
   renderRecords();
+  renderCupPanel();
+  renderIntlPanel();
+}
+
+// ── Cup ──────────────────────────────────────────────────────────────────────
+// A tie carries only ids; its score is derived server-side from the assigned
+// gameweek's results, so there's nothing to type here but structure.
+
+function playerOptions(selected) {
+  return `<option value="">— player —</option>` + USERS.map(u =>
+    `<option value="${u.id}" ${u.id === selected ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+}
+function gwOptions(selected) {
+  return `<option value="">— gameweek —</option>` + (GWS?.gameweeks || []).map(g =>
+    `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${esc(g.label || 'Gameweek ' + g.number)}</option>`).join('');
+}
+
+function renderCupPanel() {
+  el('cupRounds').innerHTML = CUP.rounds.map((round, ri) => `
+    <div class="admin-grid" style="margin-bottom:8px;">
+      <div class="form-group">
+        <label>Round name</label>
+        <input type="text" data-cup-round-name="${ri}" value="${esc(round.name || '')}" placeholder="First Round">
+      </div>
+      <div class="form-group">
+        <label>Gameweek</label>
+        <select data-cup-round-gw="${ri}">${gwOptions(round.gameweekId)}</select>
+      </div>
+      <div class="form-group" style="align-self:end;">
+        <button class="btn btn-danger btn-sm" data-cup-remove-round="${ri}">Remove round</button>
+      </div>
+    </div>
+    ${(round.ties || []).map((tie, ti) => `
+      <div class="admin-grid" style="margin-left:16px;">
+        <div class="form-group">
+          <label>Player A</label>
+          <select data-cup-tie-a="${ri}.${ti}">${playerOptions(tie.playerA)}</select>
+        </div>
+        <div class="form-group">
+          <label>Player B <span style="color:var(--muted);font-size:11px;">(blank = bye)</span></label>
+          <select data-cup-tie-b="${ri}.${ti}">${playerOptions(tie.playerB)}</select>
+        </div>
+        <div class="form-group" style="align-self:end;">
+          <button class="btn btn-danger btn-sm" data-cup-remove-tie="${ri}.${ti}">Remove tie</button>
+        </div>
+      </div>
+      ${(tie.replayGameweekIds || []).map((gwId, gi) => `
+        <div class="admin-grid" style="margin-left:32px;">
+          <div class="form-group">
+            <label>Replay ${gi + 1}</label>
+            <select data-cup-replay="${ri}.${ti}.${gi}">${gwOptions(gwId)}</select>
+          </div>
+        </div>`).join('')}
+      <div class="admin-bar" style="margin-left:16px;">
+        <button class="btn btn-outline btn-sm" data-cup-add-replay="${ri}.${ti}">+ Add replay</button>
+      </div>
+    `).join('')}
+    <div class="admin-bar" style="margin-left:16px;">
+      <button class="btn btn-outline btn-sm" data-cup-add-tie="${ri}">+ Add tie</button>
+    </div>
+  `).join('') || '<p class="empty">No rounds yet — add one below.</p>';
+}
+
+el('cupRounds')?.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.cupRoundName !== undefined) return; // input, not select
+  if (t.dataset.cupRoundGw !== undefined) CUP.rounds[t.dataset.cupRoundGw].gameweekId = t.value || null;
+  if (t.dataset.cupTieA !== undefined) {
+    const [ri, ti] = t.dataset.cupTieA.split('.').map(Number);
+    CUP.rounds[ri].ties[ti].playerA = t.value || null;
+  }
+  if (t.dataset.cupTieB !== undefined) {
+    const [ri, ti] = t.dataset.cupTieB.split('.').map(Number);
+    CUP.rounds[ri].ties[ti].playerB = t.value || null;
+  }
+  if (t.dataset.cupReplay !== undefined) {
+    const [ri, ti, gi] = t.dataset.cupReplay.split('.').map(Number);
+    CUP.rounds[ri].ties[ti].replayGameweekIds[gi] = t.value || null;
+  }
+});
+el('cupRounds')?.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.cupRoundName !== undefined) CUP.rounds[t.dataset.cupRoundName].name = t.value;
+});
+el('cupRounds')?.addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.cupRemoveRound !== undefined) { CUP.rounds.splice(t.dataset.cupRemoveRound, 1); renderCupPanel(); }
+  if (t.dataset.cupAddTie !== undefined) {
+    CUP.rounds[t.dataset.cupAddTie].ties.push({ id: 'tie_' + Date.now().toString(36), playerA: null, playerB: null, replayGameweekIds: [] });
+    renderCupPanel();
+  }
+  if (t.dataset.cupRemoveTie !== undefined) {
+    const [ri, ti] = t.dataset.cupRemoveTie.split('.').map(Number);
+    CUP.rounds[ri].ties.splice(ti, 1); renderCupPanel();
+  }
+  if (t.dataset.cupAddReplay !== undefined) {
+    const [ri, ti] = t.dataset.cupAddReplay.split('.').map(Number);
+    CUP.rounds[ri].ties[ti].replayGameweekIds.push(null); renderCupPanel();
+  }
+});
+
+async function saveCup() {
+  el('cupStatus').textContent = 'Saving…';
+  try {
+    await adminFetch('/api/admin/cup', { method: 'POST', body: JSON.stringify({ rounds: CUP.rounds }) });
+    el('cupStatus').textContent = '✓ Saved';
+    setTimeout(() => el('cupStatus').textContent = '', 2000);
+  } catch (e) {
+    el('cupStatus').textContent = 'Error: ' + e.message;
+  }
+}
+
+// ── International League ─────────────────────────────────────────────────────
+
+function renderIntlPanel() {
+  el('intlGroups').innerHTML = INTL.groups.map((group, gi) => `
+    <div class="admin-grid" style="margin-bottom:8px;">
+      <div class="form-group">
+        <label>Group name</label>
+        <input type="text" data-intl-group-name="${gi}" value="${esc(group.name || '')}" placeholder="Group A">
+      </div>
+      <div class="form-group" style="align-self:end;">
+        <button class="btn btn-danger btn-sm" data-intl-remove-group="${gi}">Remove group</button>
+      </div>
+    </div>
+    <p class="admin-hint" style="margin-left:16px;">Players</p>
+    <div class="admin-bar" style="margin-left:16px;flex-wrap:wrap;">
+      ${(group.playerIds || []).map((pid, pi) => `
+        <select data-intl-player="${gi}.${pi}">${playerOptions(pid)}</select>`).join('')}
+      <button class="btn btn-outline btn-sm" data-intl-add-player="${gi}">+ Add player</button>
+    </div>
+    <p class="admin-hint" style="margin-left:16px;">Matchdays</p>
+    ${(group.matchdays || []).map((md, mi) => `
+      <div class="admin-grid" style="margin-left:16px;">
+        <div class="form-group">
+          <label>Matchday ${mi + 1} gameweek</label>
+          <select data-intl-md-gw="${gi}.${mi}">${gwOptions(md.gameweekId)}</select>
+        </div>
+        <div class="form-group" style="align-self:end;">
+          <button class="btn btn-danger btn-sm" data-intl-remove-md="${gi}.${mi}">Remove matchday</button>
+        </div>
+      </div>
+      ${(md.fixtures || []).map((fx, fi) => `
+        <div class="admin-grid" style="margin-left:32px;">
+          <div class="form-group"><label>Home</label><select data-intl-fx-home="${gi}.${mi}.${fi}">${playerOptions(fx.home)}</select></div>
+          <div class="form-group"><label>Away</label><select data-intl-fx-away="${gi}.${mi}.${fi}">${playerOptions(fx.away)}</select></div>
+          <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-intl-remove-fx="${gi}.${mi}.${fi}">Remove fixture</button></div>
+        </div>`).join('')}
+      <div class="admin-bar" style="margin-left:32px;">
+        <button class="btn btn-outline btn-sm" data-intl-add-fx="${gi}.${mi}">+ Add fixture</button>
+      </div>
+    `).join('')}
+    <div class="admin-bar" style="margin-left:16px;">
+      <button class="btn btn-outline btn-sm" data-intl-add-md="${gi}">+ Add matchday</button>
+    </div>
+  `).join('') || '<p class="empty">No groups yet — add one below.</p>';
+
+  el('intlKnockout').innerHTML = INTL.knockout.map((round, ri) => `
+    <div class="admin-grid" style="margin-bottom:8px;">
+      <div class="form-group">
+        <label>Round name</label>
+        <input type="text" data-ko-name="${ri}" value="${esc(round.name || '')}" placeholder="Semi-Final">
+      </div>
+      <div class="form-group"><label>1st leg</label><select data-ko-leg="${ri}.0">${gwOptions(round.legs?.[0]?.gameweekId)}</select></div>
+      <div class="form-group"><label>2nd leg <span style="color:var(--muted);font-size:11px;">(blank = single leg)</span></label><select data-ko-leg="${ri}.1">${gwOptions(round.legs?.[1]?.gameweekId)}</select></div>
+      <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-ko-remove-round="${ri}">Remove round</button></div>
+    </div>
+    ${(round.ties || []).map((tie, ti) => `
+      <div class="admin-grid" style="margin-left:16px;">
+        <div class="form-group"><label>Player A</label><select data-ko-tie-a="${ri}.${ti}">${playerOptions(tie.playerA)}</select></div>
+        <div class="form-group"><label>Player B</label><select data-ko-tie-b="${ri}.${ti}">${playerOptions(tie.playerB)}</select></div>
+        <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-ko-remove-tie="${ri}.${ti}">Remove tie</button></div>
+      </div>`).join('')}
+    <div class="admin-bar" style="margin-left:16px;">
+      <button class="btn btn-outline btn-sm" data-ko-add-tie="${ri}">+ Add tie</button>
+    </div>
+  `).join('') || '<p class="empty">No knockout rounds yet.</p>';
+}
+
+el('intlGroups')?.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.intlGroupName !== undefined) INTL.groups[t.dataset.intlGroupName].name = t.value;
+});
+el('intlGroups')?.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.intlPlayer !== undefined) {
+    const [gi, pi] = t.dataset.intlPlayer.split('.').map(Number);
+    INTL.groups[gi].playerIds[pi] = t.value || null;
+  }
+  if (t.dataset.intlMdGw !== undefined) {
+    const [gi, mi] = t.dataset.intlMdGw.split('.').map(Number);
+    INTL.groups[gi].matchdays[mi].gameweekId = t.value || null;
+  }
+  if (t.dataset.intlFxHome !== undefined) {
+    const [gi, mi, fi] = t.dataset.intlFxHome.split('.').map(Number);
+    INTL.groups[gi].matchdays[mi].fixtures[fi].home = t.value || null;
+  }
+  if (t.dataset.intlFxAway !== undefined) {
+    const [gi, mi, fi] = t.dataset.intlFxAway.split('.').map(Number);
+    INTL.groups[gi].matchdays[mi].fixtures[fi].away = t.value || null;
+  }
+});
+el('intlGroups')?.addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.intlRemoveGroup !== undefined) { INTL.groups.splice(t.dataset.intlRemoveGroup, 1); renderIntlPanel(); }
+  if (t.dataset.intlAddPlayer !== undefined) { INTL.groups[t.dataset.intlAddPlayer].playerIds.push(null); renderIntlPanel(); }
+  if (t.dataset.intlAddMd !== undefined) {
+    INTL.groups[t.dataset.intlAddMd].matchdays.push({ gameweekId: null, fixtures: [] }); renderIntlPanel();
+  }
+  if (t.dataset.intlRemoveMd !== undefined) {
+    const [gi, mi] = t.dataset.intlRemoveMd.split('.').map(Number);
+    INTL.groups[gi].matchdays.splice(mi, 1); renderIntlPanel();
+  }
+  if (t.dataset.intlAddFx !== undefined) {
+    const [gi, mi] = t.dataset.intlAddFx.split('.').map(Number);
+    INTL.groups[gi].matchdays[mi].fixtures.push({ home: null, away: null }); renderIntlPanel();
+  }
+  if (t.dataset.intlRemoveFx !== undefined) {
+    const [gi, mi, fi] = t.dataset.intlRemoveFx.split('.').map(Number);
+    INTL.groups[gi].matchdays[mi].fixtures.splice(fi, 1); renderIntlPanel();
+  }
+});
+el('addIntlGroupBtn')?.addEventListener('click', () => {
+  INTL.groups.push({ id: 'grp_' + Date.now().toString(36), name: '', playerIds: [], matchdays: [] });
+  renderIntlPanel();
+});
+
+el('intlKnockout')?.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.koName !== undefined) INTL.knockout[t.dataset.koName].name = t.value;
+});
+el('intlKnockout')?.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.koLeg !== undefined) {
+    const [ri, li] = t.dataset.koLeg.split('.').map(Number);
+    if (!INTL.knockout[ri].legs) INTL.knockout[ri].legs = [];
+    INTL.knockout[ri].legs[li] = t.value ? { gameweekId: t.value } : null;
+  }
+  if (t.dataset.koTieA !== undefined) {
+    const [ri, ti] = t.dataset.koTieA.split('.').map(Number);
+    INTL.knockout[ri].ties[ti].playerA = t.value || null;
+  }
+  if (t.dataset.koTieB !== undefined) {
+    const [ri, ti] = t.dataset.koTieB.split('.').map(Number);
+    INTL.knockout[ri].ties[ti].playerB = t.value || null;
+  }
+});
+el('intlKnockout')?.addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.koRemoveRound !== undefined) { INTL.knockout.splice(t.dataset.koRemoveRound, 1); renderIntlPanel(); }
+  if (t.dataset.koAddTie !== undefined) {
+    INTL.knockout[t.dataset.koAddTie].ties.push({ playerA: null, playerB: null }); renderIntlPanel();
+  }
+  if (t.dataset.koRemoveTie !== undefined) {
+    const [ri, ti] = t.dataset.koRemoveTie.split('.').map(Number);
+    INTL.knockout[ri].ties.splice(ti, 1); renderIntlPanel();
+  }
+});
+el('addIntlRoundBtn')?.addEventListener('click', () => {
+  INTL.knockout.push({ name: '', legs: [null, null], ties: [] });
+  renderIntlPanel();
+});
+
+async function saveIntl() {
+  el('intlStatus').textContent = 'Saving…';
+  try {
+    await adminFetch('/api/admin/international-league', { method: 'POST', body: JSON.stringify({ groups: INTL.groups, knockout: INTL.knockout }) });
+    el('intlStatus').textContent = '✓ Saved';
+    setTimeout(() => el('intlStatus').textContent = '', 2000);
+  } catch (e) {
+    el('intlStatus').textContent = 'Error: ' + e.message;
+  }
 }
 
 async function boot() {
@@ -476,10 +760,25 @@ async function boot() {
       el('panel-results').style.display  = b.dataset.panel === 'results'  ? '' : 'none';
       el('panel-fixtures').style.display = b.dataset.panel === 'fixtures' ? '' : 'none';
       el('panel-records').style.display  = b.dataset.panel === 'records'  ? '' : 'none';
+      el('panel-cup').style.display          = b.dataset.panel === 'cup'          ? '' : 'none';
+      el('panel-international').style.display = b.dataset.panel === 'international' ? '' : 'none';
     }));
 
   el('recordGw').addEventListener('change', renderRecords);
   el('exportCsvBtn').addEventListener('click', exportCsv);
+  el('downloadXlsxBtn').addEventListener('click', async () => {
+    el('downloadXlsxBtn').disabled = true;
+    try { await API.downloadExcel(ADMIN_PW); }
+    catch (e) { alert('Could not download workbook: ' + e.message); }
+    finally { el('downloadXlsxBtn').disabled = false; }
+  });
+
+  el('addCupRoundBtn').addEventListener('click', () => {
+    CUP.rounds.push({ id: 'round_' + Date.now().toString(36), name: '', gameweekId: null, ties: [] });
+    renderCupPanel();
+  });
+  el('saveCupBtn').addEventListener('click', saveCup);
+  el('saveIntlBtn').addEventListener('click', saveIntl);
 
   el('resultGw').addEventListener('change', async () => { renderResultPanel(); await renderPraisePreview(); });
   el('saveResultsBtn').addEventListener('click', saveResults);

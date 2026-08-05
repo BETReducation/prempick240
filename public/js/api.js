@@ -68,6 +68,30 @@ const API = {
   results:     () => API.get('/api/results'),
   leaderboard: () => API.get('/api/leaderboard'),
   praise:      () => API.get('/api/praise'),
+  positionHistory: () => API.get('/api/position-history'),
+
+  // Cup & International League (admin create/edit goes through admin.js's
+  // own adminFetch, which already merges session-token + admin-password
+  // headers the same way as every other admin write)
+  cup:               () => API.get('/api/cup'),
+  internationalLeague: () => API.get('/api/international-league'),
+
+  // Streams the workbook as a blob (a plain <a href> download can't carry
+  // the auth headers requireAdmin needs, so this fetches then saves).
+  async downloadExcel(pwd = null) {
+    const { token } = Session.load();
+    const headers = {};
+    if (pwd)   headers['x-admin-password'] = pwd;
+    if (token) headers['x-session-token']  = token;
+    const r = await fetch('/api/admin/export-xlsx', { headers });
+    if (!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'PremPick240-League.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
   verifyAdmin(pwd) {
     const { token } = Session.load();
     const headers = {};

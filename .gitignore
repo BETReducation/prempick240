@@ -4,6 +4,10 @@ data/results.json
 data/access-codes.json
 data/sessions.json
 data/leaderboard-prev.json
+data/position-history.json
+data/cup.json
+data/international-league.json
+data/PremPick240-League.xlsx
 *.pdf
 .DS_Store
 *.docx

@@ -9,14 +9,26 @@ function pts(n) {
   return Number(Math.round(Number(n) * 10) / 10).toLocaleString('en-GB');
 }
 
-function renderTable(board, gws, meId) {
+// Movement arrows follow the original workbook's inverted convention:
+// moving UP the table (fewer = better) renders red, moving down renders blue.
+function movementBadge(movement) {
+  if (!movement) return '<span class="muted">-</span>';
+  return movement > 0
+    ? `<span class="move-up">▲ ${movement}</span>`
+    : `<span class="move-down">▼ ${Math.abs(movement)}</span>`;
+}
+
+function renderTable(board, gws, meId, positionHistory) {
   const played = gws.gameweeks.filter(g => g.complete);
+  const moveById = {};
+  (positionHistory || []).forEach(p => { moveById[p.id] = p.movement; });
 
   el('rankingTable').innerHTML = `
     <thead>
       <tr>
         <th class="col-pos">#</th>
         <th class="col-player">Player</th>
+        <th class="col-num" title="Movement since last completed gameweek">Move</th>
         <th class="col-pts" title="1 point per correct result">Results</th>
         <th class="col-pts" title="Exact scorelines — tie-breaker">Exact</th>
         <th class="col-num" title="Weeks with all six results correct">Perfect weeks</th>
@@ -32,13 +44,70 @@ function renderTable(board, gws, meId) {
           <td class="col-player">
             ${esc(p.displayName || p.name)}
           </td>
+          <td class="col-num">${movementBadge(moveById[p.id])}</td>
           <td class="col-pts strong">${p.resultPoints}</td>
           <td class="col-pts">${p.scorePoints}</td>
           <td class="col-num">${perfect ? `<span class="perfect-badge">${perfect}</span>` : '—'}</td>
           <td class="col-num muted">${p.weeklyPredictions ?? 0}</td>
         </tr>`;
-      }).join('') : `<tr><td colspan="6" class="empty">No players yet.</td></tr>`}
+      }).join('') : `<tr><td colspan="7" class="empty">No players yet.</td></tr>`}
     </tbody>`;
+}
+
+// Form Guide: same rolling-last-6-played-weeks idea the original workbook
+// drove with OFFSET off `Week Record` — here it's just a slice of
+// `perGameweek` (already returned by /api/leaderboard), sorted by that total.
+function renderFormGuide(board, gws) {
+  const played = gws.gameweeks.filter(g => g.complete).sort((a, b) => a.number - b.number);
+  const lastSix = played.slice(-6);
+
+  const rows = board.map(p => {
+    const weekScores = lastSix.map(g => p.perGameweek[g.id]?.resultPoints);
+    const total = lastSix.length ? weekScores.reduce((s, v) => s + (v ?? 0), 0) : -1;
+    return { p, weekScores, total };
+  }).sort((a, b) => b.total - a.total);
+
+  el('formGuideTable').innerHTML = `
+    <thead>
+      <tr>
+        <th class="col-player">Player</th>
+        ${lastSix.map(g => `<th class="col-num">Wk ${g.number}</th>`).join('')}
+        <th class="col-pts">Last 6</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.length ? rows.map(({ p, weekScores, total }) => `
+        <tr>
+          <td class="col-player">${esc(p.displayName || p.name)}</td>
+          ${weekScores.map(v => `<td class="col-num muted">${v ?? '—'}</td>`).join('')}
+          <td class="col-pts strong">${total < 0 ? '—' : total}</td>
+        </tr>`).join('') : `<tr><td colspan="${lastSix.length + 2}" class="empty">No completed gameweeks yet.</td></tr>`}
+    </tbody>`;
+}
+
+// Manager Of The Week: whoever called the most results correct in a single
+// completed gameweek, ties shared — a compact strip of the last few weeks.
+function renderMotw(board, gws) {
+  const played = gws.gameweeks.filter(g => g.complete).sort((a, b) => b.number - a.number);
+  const rows = played.map(gw => {
+    const scores = board.map(p => p.perGameweek[gw.id]?.resultPoints ?? -1);
+    const max = Math.max(...scores, 0);
+    if (max <= 0) return null;
+    const winners = board.filter(p => (p.perGameweek[gw.id]?.resultPoints ?? -1) === max);
+    return { gw, winners, max };
+  }).filter(Boolean).slice(0, 6);
+
+  el('motwList').innerHTML = rows.length ? `
+    <div class="praise-list">
+      ${rows.map(({ gw, winners, max }) => `
+        <div class="praise-row won">
+          <span class="praise-gw">${esc(gw.label || 'Week ' + gw.number)}</span>
+          <span class="praise-winners">
+            ${winners.map(x => `<span class="winner-chip"><i class="fa-solid fa-star"></i> ${esc(x.displayName || x.name)}</span>`).join('')}
+          </span>
+          <span class="praise-amount">${max}/6 correct</span>
+        </div>`).join('')}
+    </div>` : '<p class="empty">No completed gameweeks yet.</p>';
 }
 
 function renderPraise(praise, board) {
@@ -117,13 +186,15 @@ function renderPraise(praise, board) {
 
 async function init() {
   try {
-    const [board, gws, praise] = await Promise.all([
-      API.leaderboard(), API.gameweeks(), API.praise()
+    const [board, gws, praise, positionHistory] = await Promise.all([
+      API.leaderboard(), API.gameweeks(), API.praise(), API.positionHistory().catch(() => [])
     ]);
     const { userId } = Session.load();
 
     el('seasonLabel').textContent = gws.season ? `Season ${gws.season}` : 'Season';
-    renderTable(board, gws, userId);
+    renderTable(board, gws, userId, positionHistory);
+    renderFormGuide(board, gws);
+    renderMotw(board, gws);
     renderPraise(praise, board);
 
     el('loadingState').style.display = 'none';

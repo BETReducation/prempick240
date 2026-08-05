@@ -504,6 +504,8 @@
     <a href="index.html">Home</a>
     <a href="index.html">Predictions</a>
     <a href="ranking.html">Ranking</a>
+    <a href="cup.html">Cup</a>
+    <a href="international.html">International</a>
     <a href="member.html" id="navMemberLink" class="nav-member-link active" style="display:none;"></a>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme"><i class="fa-solid fa-moon"></i></button>
     <button class="nav-hamburger" id="navHamburger" aria-label="Open menu">☰</button>
@@ -521,6 +523,8 @@
     <a href="index.html">Home</a>
     <a href="index.html">Predictions</a>
     <a href="ranking.html">Ranking</a>
+    <a href="cup.html">Cup</a>
+    <a href="international.html">International</a>
     </div>
   <div class="nav-drawer-footer" id="navDrawerUser"></div>
 </nav>
@@ -587,6 +591,11 @@
           <div class="stat-label">Predictions Entered</div>
           <div class="stat-value muted" id="statPreds">—</div>
           <div class="stat-sub">of 72 matches</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best / Worst Position</div>
+          <div class="stat-value muted" id="statBestWorst">—</div>
+          <div class="stat-sub">this season</div>
         </div>
       </div>
     </div>
@@ -897,6 +906,8 @@ function populateStats(data) {
   document.getElementById('statResults').textContent = s.correctResults;
   document.getElementById('statScores').textContent  = s.correctScores;
   document.getElementById('statPreds').textContent   = s.predictionsEntered;
+  document.getElementById('statBestWorst').textContent = (s.bestPosition && s.worstPosition)
+    ? `#${s.bestPosition} / #${s.worstPosition}` : '—';
 
   const playedPreds = Object.keys(data.matchPoints || {}).length;
   if (playedPreds > 0) {
