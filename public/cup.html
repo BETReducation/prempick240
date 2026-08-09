@@ -53,13 +53,29 @@
     <p class="section-desc">A tie's score is simply both players' results-correct count in that
       round's gameweek — no extra fixtures to predict. A draw is settled by a replay.
       The PP Cup starts in January.</p>
+    <p class="rules-label">PP Cup Rules:</p>
+    <ol class="rules-list">
+      <li>During a match week with FA Cup games instead of Premier League games, fixtures will include FA Cup games.</li>
+      <li>The predictions still count towards the overall Rankings.</li>
+      <li>Additionally, the predictions will also contribute to the PP Cup knockout tournament.</li>
+      <li>When Round 3 fixtures are known in the FA Cup, a random draw will be made for this PP Cup Tournament.</li>
+      <li>Byes will be awarded for random players if the number of players doesn't match a knockout tournament bracket.</li>
+      <li>Each round of the FA Cup will have fixtures for this competition (sometimes a Premier League game may be used to make up 6 fixtures if needed).</li>
+      <li>At the end of the season, the PP Cup winner will win a certificate, and win a 5% share of any built-up praise in the kitty.</li>
+    </ol>
   </div>
 
-  <div class="section section--flush section--wide">
+  <!-- Not --wide: kept to the same 760px column as the rules above it, so
+       the bracket's left/right edges line up with the paragraph/bullets.
+       The bracket grid itself is centered within that column (see
+       .bracket-columns) rather than left-flush. If a future round makes the
+       bracket wider than 760px, this column should grow to fit it rather
+       than clip — revisit alongside horizontal-scroll multi-round support. -->
+  <div class="section section--flush">
     <div id="cupRounds"></div>
   </div>
 
-  <div class="section section--flush section--wide">
+  <div class="section section--flush">
     <div id="cupSchedule"></div>
   </div>
 

@@ -1855,6 +1855,21 @@ footer span {
 .section-note { font-size: 12px; color: var(--muted); }
 .empty { color: var(--muted); font-size: 13px; }
 
+.rules-label {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  margin: 20px 0 8px;
+}
+.rules-list {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  padding-left: 1.3em;
+}
+.rules-list li { margin-bottom: 6px; }
+.rules-list li:last-child { margin-bottom: 0; }
+
 /* A bare "nothing here yet" placeholder that sits directly in a --wide
    (1100px) content section, with no table around it to anchor it, drifts
    to the wide section's own left edge instead of lining up under the
@@ -1906,6 +1921,10 @@ footer span {
   grid-template-columns: repeat(2, 200px);
   gap: 14px 48px;
   align-items: start;
+  /* The grid box itself is block-level and fills its 760px column — center
+     the fixed-width tracks within that box rather than leaving them
+     flush-left with empty space trailing off to the right. */
+  justify-content: center;
 }
 .bracket-column { display: flex; flex-direction: column; gap: 14px; }
 .bracket-tie {
