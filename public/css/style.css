@@ -1904,6 +1904,11 @@ footer span {
 .cup-schedule-details .table-wrap { border-top: 1px solid var(--border); }
 
 /* ── Bracket ─────────────────────────────────────────────────────────────── */
+/* Plain block, not a nested .section — .section applies its own 2rem side
+   padding, and nesting one inside the (already-padded) #cupRounds container
+   doubled up that padding, indenting the round heading further right than
+   the bracket cards below it instead of lining up with them. */
+.bracket-round-head { margin-bottom: 20px; }
 /* Two columns, ties alternating left/right in draw order — tie 1 top-left,
    tie 2 top-right, tie 3 second-left, tie 4 second-right, and so on — so the
    bracket stays visually balanced as it grows, rather than filling one long

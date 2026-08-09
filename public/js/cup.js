@@ -59,24 +59,25 @@ function renderBracketColumns(ties) {
     </div>`;
 }
 
-// Before admin has drawn a real Round 1, show a like-for-like preview sized
-// to however many players are currently eligible to join — "Player 1" is
-// not a real account, just a seed number. Shape (how many ties, how many
-// byes) comes straight from the server's round1Shape() so this always
-// matches what "Randomise Round 1" would actually produce — byes only ever
-// happen here, never in a later round, so the minority (not majority) sits
-// out: enough ties to trim the field down to the nearest power of two,
-// everyone else gets a bye.
-function placeholderTies(tieCount, byeCount) {
+// Before admin has drawn a real Round 1, show a placeholder sized to however
+// many players are currently eligible to join — "Player 1" is not a real
+// account, just a seed number. This is a cosmetic mask, not real bye math:
+// every card is paired up with "vs" for a clean look, regardless of what
+// round1Shape() actually computes for byes (the round name above it still
+// reflects that real math — see renderRounds()). The real pairing, with
+// real byes, only matters once admin actually draws the round; until then
+// there's nothing riding on this preview being exactly accurate.
+function placeholderTies(totalCount) {
   const ties = [];
   let seed = 1;
-  for (let i = 0; i < tieCount; i++) {
-    ties.push({ playerAName: `Player ${seed}`, playerBName: `Player ${seed + 1}`, placeholder: true });
-    seed += 2;
-  }
-  for (let i = 0; i < byeCount; i++) {
-    ties.push({ playerAName: `Player ${seed}`, bye: true, placeholder: true });
-    seed += 1;
+  while (seed <= totalCount) {
+    if (seed + 1 <= totalCount) {
+      ties.push({ playerAName: `Player ${seed}`, playerBName: `Player ${seed + 1}`, placeholder: true });
+      seed += 2;
+    } else {
+      ties.push({ playerAName: `Player ${seed}`, bye: true, placeholder: true });
+      seed += 1;
+    }
   }
   return ties;
 }
@@ -90,18 +91,17 @@ function renderRounds(cup) {
   const upcoming = rounds.filter(r => !r.ties || !r.ties.length);
 
   if (!bracket.length) {
-    const tieCount = cup.previewTieCount ?? 0, byeCount = cup.previewByeCount ?? 0;
     const roundName = cup.previewRoundName || 'Round 1';
     el('cupRounds').innerHTML = `
-      <div class="section section--no-bottom">
+      <div class="bracket-round-head">
         <h3 class="subsection-title">${esc(roundName)} — provisional</h3>
         <p class="section-note">Seeded by player count, not drawn yet — admin will randomise real players in once everyone's joined.</p>
       </div>
-      ${renderBracketColumns(placeholderTies(tieCount, byeCount))}
+      ${renderBracketColumns(placeholderTies(cup.eligibleCount ?? 2))}
     `;
   } else {
     el('cupRounds').innerHTML = bracket.map(round => `
-      <div class="section section--no-bottom">
+      <div class="bracket-round-head">
         <h3 class="subsection-title">${esc(round.name)}</h3>
       </div>
       ${renderBracketColumns(round.ties)}
