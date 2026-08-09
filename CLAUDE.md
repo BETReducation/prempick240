@@ -154,6 +154,12 @@ tracking the player count.
   its own — its "score" is simply both players' `resultPoints` in the round's
   gameweek (see `calcCup()` in `server.js`). A draw is flagged `needsReplay`;
   add a replay gameweek to the tie and it resolves automatically.
+  "🎲 Randomise Round 1" shuffles every *eligible* player into Round 1
+  pairings and stages them in the panel below — nothing is saved until you
+  hit "Save Cup", so a bad draw just costs a re-roll. Before a real Round 1
+  exists, the public Cup page shows a placeholder bracket ("Player 1" v
+  "Player 2", …) sized to the current eligible headcount, so the shape of
+  the draw is visible before anyone's actually seeded into it.
 - **International** — build the International League: groups of players with
   round-robin matchdays, each mapped to an `INTL`-tagged gameweek. It's a
   pure league — no knockout stage after the groups. Matchday "goals" are the
@@ -202,6 +208,25 @@ alone: the admin Fixtures editor relies on array position to assign match ids
 reassign ids already tied to existing predictions/results. If you need
 chronological order somewhere else (admin Records, Excel), sort a copy there
 too rather than touching the stored array.
+
+## Cup / International eligibility cutoff
+
+`cupEligibilityCutoff()` in `server.js` finds the earliest `kickoff` across
+every `CUP`- or `INTL`-tagged match in `gameweeks.json` (any gameweek, past
+or future — not just the current one). Whoever's registered before that
+instant is eligible for the Cup and International League, for good; anyone
+registering after it never is. No such gameweek yet ⇒ no cutoff yet ⇒
+everyone currently registered is eligible.
+
+This is computed live from each user's `registeredAt`, not stored — same
+"derive it, don't freeze it" approach as `totalPot`/`weeklyBase`. `GET
+/api/users` carries the result as `eligible` on each player, which is what
+`randomiseCupRound1()` in `admin.js` filters on. The manual player-picker
+dropdowns (Cup ties, International groups) are deliberately **not**
+filtered by this — they still list everyone, so admin can always override
+by hand without a previously-set tie or group member silently vanishing
+from a `<select>` if the computed cutoff ever shifts (e.g. an earlier
+CUP/INTL gameweek gets added later).
 
 ## The active gameweek — reveal & weekly-tally reset
 

@@ -682,8 +682,9 @@ app.delete('/api/admin/gameweeks/:gwId', requireAdmin, (req, res) => {
 // ── Users / registration ───────────────────────────────────────────────────────
 
 app.get('/api/users', (req, res) => {
-  const data = readJSON(PREDICTIONS_FILE, { users: [] });
-  res.json(data.users.map(u => ({ id: u.id, name: u.name })));
+  const data   = readJSON(PREDICTIONS_FILE, { users: [] });
+  const cutoff = cupEligibilityCutoff();
+  res.json(data.users.map(u => ({ id: u.id, name: u.name, eligible: isCupEligible(u, cutoff) })));
 });
 
 app.post('/api/register', (req, res) => {
@@ -1224,6 +1225,30 @@ app.get('/api/position-history', (req, res) => res.json(calcPositionHistory()));
 // resolved by adding a replay gameweek to the tie (see admin Cup tab); until
 // then it's flagged needsReplay so admin knows to act on it.
 
+// Cup/International entry cuts off at the first kick-off of the first
+// CUP- or INTL-tagged gameweek (chronologically, across every gameweek —
+// past or future). Whoever's registered by then is in for good; anyone
+// registering after that instant is never eligible, even in later seasons
+// of the same cup, so latecomers can't dodge a tough early-round draw by
+// waiting. No such gameweek yet ⇒ no cutoff yet ⇒ everyone eligible.
+function cupEligibilityCutoff() {
+  let earliest = null;
+  for (const gw of readGameweeks().gameweeks || []) {
+    for (const m of gw.matches || []) {
+      if ((m.comp === 'CUP' || m.comp === 'INTL') && m.kickoff) {
+        const t = new Date(m.kickoff).getTime();
+        if (!isNaN(t) && (earliest === null || t < earliest)) earliest = t;
+      }
+    }
+  }
+  return earliest === null ? null : new Date(earliest).toISOString();
+}
+
+function isCupEligible(user, cutoffIso) {
+  if (!cutoffIso || !user.registeredAt) return true;
+  return new Date(user.registeredAt).getTime() < new Date(cutoffIso).getTime();
+}
+
 function readCup() { return readJSON(CUP_FILE, { rounds: [] }); }
 
 function calcCup() {
@@ -1268,7 +1293,14 @@ function calcCup() {
     return { ...round, gameweek, ties };
   });
 
-  return { rounds };
+  // Lets the public Cup page draw a placeholder bracket (Player 1 v Player 2,
+  // …) sized to however many eligible players there are right now, before
+  // admin has drawn — let alone entered — a real Round 1.
+  const cutoff = cupEligibilityCutoff();
+  const eligibleCount = (readJSON(PREDICTIONS_FILE, { users: [] }).users || [])
+    .filter(u => isCupEligible(u, cutoff)).length;
+
+  return { rounds, eligibleCount };
 }
 
 app.get('/api/cup', (req, res) => res.json(calcCup()));

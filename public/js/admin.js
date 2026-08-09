@@ -523,6 +523,9 @@ function gwOptions(selected) {
 }
 
 function renderCupPanel() {
+  const eligibleCount = USERS.filter(u => u.eligible !== false).length;
+  el('randomiseCupHint').textContent = `${eligibleCount} player${eligibleCount === 1 ? '' : 's'} eligible right now`;
+
   el('cupRounds').innerHTML = CUP.rounds.map((round, ri) => `
     <div class="admin-grid" style="margin-bottom:8px;">
       <div class="form-group">
@@ -615,6 +618,48 @@ async function saveCup() {
   } catch (e) {
     el('cupStatus').textContent = 'Error: ' + e.message;
   }
+}
+
+// Shuffles every eligible player (see cupEligibilityCutoff() in server.js —
+// registered before the first CUP/INTL kick-off) into Round 1 pairings and
+// stages them into CUP.rounds. Doesn't save on its own — admin reviews the
+// draw in the panel below and hits "Save Cup" same as any other edit, so a
+// bad shuffle costs a re-roll, not a live overwrite.
+function randomiseCupRound1() {
+  const eligible = USERS.filter(u => u.eligible !== false);
+  if (eligible.length < 2) {
+    alert(`Only ${eligible.length} eligible player(s) — need at least 2 to draw a round.`);
+    return;
+  }
+  if (!confirm(`Randomise Round 1 with ${eligible.length} eligible players? This replaces Round 1's current pairings (you still need to hit "Save Cup" after).`))
+    return;
+
+  const shuffled = [...eligible];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const ties = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    ties.push({
+      id: 'tie_' + Date.now().toString(36) + '_' + (i / 2),
+      playerA: shuffled[i].id,
+      playerB: shuffled[i + 1] ? shuffled[i + 1].id : null,
+      replayGameweekIds: []
+    });
+  }
+
+  let round1 = CUP.rounds[0];
+  if (!round1) {
+    round1 = { id: 'round_' + Date.now().toString(36), name: 'Round 1', gameweekId: null, ties: [] };
+    CUP.rounds.unshift(round1);
+  }
+  round1.name = round1.name || 'Round 1';
+  round1.ties = ties;
+  renderCupPanel();
+  el('cupStatus').textContent = 'Drawn — review below, then Save Cup.';
+  el('cupStatus').className = 'save-status ok';
 }
 
 // ── International League ─────────────────────────────────────────────────────
@@ -753,6 +798,7 @@ async function boot() {
     renderCupPanel();
   });
   el('saveCupBtn').addEventListener('click', saveCup);
+  el('randomiseCupBtn').addEventListener('click', randomiseCupRound1);
   el('saveIntlBtn').addEventListener('click', saveIntl);
 
   el('resultGw').addEventListener('change', async () => { renderResultPanel(); await renderPraisePreview(); });
