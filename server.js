@@ -1287,14 +1287,15 @@ app.post('/api/admin/cup', requireAdmin, (req, res) => {
 
 // ── International League ────────────────────────────────────────────────────────
 //
-// Same mechanic as the cup: each group matchday and each knockout leg is
-// mapped to a gameweek, and the two players' resultPoints in that gameweek
-// are the "goalscore". The gameweeks themselves are normal gameweeks — admin
-// tags their matches comp:"INTL" so the fixture list reads as internationals;
-// results are entered exactly the same way as any other week.
+// A round-robin league, not a knockout: each group plays a matchday per
+// international break, mapped to a gameweek, and the two players'
+// resultPoints in that gameweek are the "goalscore". The gameweeks
+// themselves are normal gameweeks — admin tags their matches comp:"INTL"
+// so the fixture list reads as internationals; results are entered exactly
+// the same way as any other week.
 
 function readInternational() {
-  return readJSON(INTERNATIONAL_FILE, { groups: [], knockout: [] });
+  return readJSON(INTERNATIONAL_FILE, { groups: [] });
 }
 
 function goalsFor(byId, playerId, gameweekId) {
@@ -1335,32 +1336,11 @@ function calcInternationalLeague() {
     return { id: group.id, name: group.name, table: rows };
   });
 
-  const knockout = (data.knockout || []).map(round => {
-    const ties = (round.ties || []).map(tie => {
-      const legWeeks = (round.legs || []).map(l => l.gameweekId).filter(Boolean);
-      let aggA = 0, aggB = 0, pending = false, any = false;
-      for (const wk of legWeeks) {
-        const gf = goalsFor(byId, tie.playerA, wk);
-        const ga = goalsFor(byId, tie.playerB, wk);
-        if (gf == null || ga == null) { pending = true; continue; }
-        aggA += gf; aggB += ga; any = true;
-      }
-      const winner = (!pending && any && aggA !== aggB) ? (aggA > aggB ? tie.playerA : tie.playerB) : null;
-      return {
-        ...tie, playerAName: label(tie.playerA), playerBName: label(tie.playerB),
-        aggA: any ? aggA : null, aggB: any ? aggB : null,
-        winner, winnerName: winner ? label(winner) : null,
-        pending: pending || !any
-      };
-    });
-    return { name: round.name, legs: round.legs, ties };
-  });
-
   const qualification = board.slice().sort((a, b) =>
     b.resultPoints - a.resultPoints || b.scorePoints - a.scorePoints
   );
 
-  return { groups, knockout, qualification };
+  return { groups, qualification };
 }
 
 app.get('/api/international-league', (req, res) => res.json(calcInternationalLeague()));
@@ -1369,10 +1349,10 @@ app.get('/api/international-league', (req, res) => res.json(calcInternationalLea
 app.get('/api/admin/international-league', requireAdmin, (req, res) => res.json(readInternational()));
 
 app.post('/api/admin/international-league', requireAdmin, (req, res) => {
-  const { groups, knockout } = req.body;
-  if (!Array.isArray(groups) || !Array.isArray(knockout))
-    return res.status(400).json({ error: 'groups and knockout arrays required' });
-  writeJSON(INTERNATIONAL_FILE, { groups, knockout });
+  const { groups } = req.body;
+  if (!Array.isArray(groups))
+    return res.status(400).json({ error: 'groups array required' });
+  writeJSON(INTERNATIONAL_FILE, { groups });
   scheduleExcelSync();
   res.json({ success: true });
 });

@@ -26,7 +26,7 @@ design system, different domain model.
 | `public/admin.html` | **Admin** — publish a week's fixtures, enter results, manage the Cup and International League, download the League Workbook. Linked in the nav for admin accounts only. |
 | `public/reset.html` | Password reset landing page (email token) |
 | `public/cup.html` | **FP Cup** — read-only knockout bracket |
-| `public/international.html` | **International League** — group tables, knockout, qualification standings |
+| `public/international.html` | **International League** — round-robin group tables, qualification standings |
 
 Login is a modal injected by `public/js/auth.js`, present on every page — same
 flow as WC26 (email + password, invite code required for new accounts).
@@ -69,7 +69,7 @@ Runtime state (gitignored, lives on the Railway volume in production):
 `leaderboard-prev.json`, `position-history.json` (one position snapshot per
 completed gameweek, never overwritten), `cup.json` (FP Cup rounds/ties, ids
 only — scores are always derived, never stored), `international-league.json`
-(groups/matchdays/knockout, same ids-only shape), `PremPick240-League.xlsx`
+(groups/matchdays, same ids-only shape), `PremPick240-League.xlsx`
 (the generated Excel mirror — see "Excel mirror" below).
 
 ## Scoring
@@ -155,11 +155,11 @@ tracking the player count.
   gameweek (see `calcCup()` in `server.js`). A draw is flagged `needsReplay`;
   add a replay gameweek to the tie and it resolves automatically.
 - **International** — build the International League: groups of players with
-  round-robin matchdays (each mapped to an `INTL`-tagged gameweek), plus a
-  two-legged knockout. Matchday "goals" are the two players' `resultPoints`
-  that week (`calcInternationalLeague()`). Qualification is just the current
-  season standings, shown for reference when seeding groups — it isn't frozen
-  at draw time.
+  round-robin matchdays, each mapped to an `INTL`-tagged gameweek. It's a
+  pure league — no knockout stage after the groups. Matchday "goals" are the
+  two players' `resultPoints` that week (`calcInternationalLeague()`).
+  Qualification is just the current season standings, shown for reference
+  when seeding groups — it isn't frozen at draw time.
 
 Auth: `requireAdmin` accepts an admin user's session token, so a signed-in admin
 needs no password. The password box is a fallback and stores to `sessionStorage`.
@@ -274,8 +274,8 @@ submits — this was a real bug, not a hypothetical.
 | GET | `/api/position-history` | — | Position per completed gameweek, best/worst, movement |
 | GET | `/api/cup` | — | FP Cup bracket with computed scores/winners |
 | GET/POST | `/api/admin/cup` | Admin | Read/write the raw bracket structure |
-| GET | `/api/international-league` | — | Groups, knockout, qualification, all computed |
-| GET/POST | `/api/admin/international-league` | Admin | Read/write the raw groups/knockout structure |
+| GET | `/api/international-league` | — | Groups, qualification, all computed |
+| GET/POST | `/api/admin/international-league` | Admin | Read/write the raw groups structure |
 | GET | `/api/admin/export-xlsx` | Admin | Download the current Excel mirror |
 
 Plus the auth/profile routes carried over unchanged from WC26 (`/api/register`,

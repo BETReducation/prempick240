@@ -112,7 +112,7 @@ function buildReadme(wb) {
     '  Predictions                   Every player\'s raw score predictions, written the moment they save',
     '  Position History              League position per player per completed week, plus best/worst',
     '  FP Cup                        Knockout bracket — ties decided by that week\'s results-correct count',
-    '  International League          Group stage + knockout, fed by international-tagged gameweeks',
+    '  International League          Round-robin group league, fed by international-tagged gameweeks',
     '  International League Qual.    Current standings, for reference when seeding groups'
   ];
   lines.forEach((line, i) => { sheet.getCell(i + 1, 1).value = line; });
@@ -257,17 +257,6 @@ function buildInternational(wb, intl) {
     group.table.forEach(row => {
       groupSheet.addRow([group.name, row.name, row.played, row.won, row.drawn, row.lost, row.for, row.against, row.gd, row.points]);
     });
-  }
-  if ((intl.knockout || []).length) {
-    groupSheet.addRow([]);
-    const koHeader = groupSheet.addRow(['Knockout round', 'Player A', 'Agg', 'Agg', 'Player B', 'Result']);
-    styledHeader(koHeader);
-    for (const round of intl.knockout) {
-      for (const tie of round.ties) {
-        const result = tie.winner ? `${tie.winnerName} advances` : tie.pending ? 'Not yet played' : 'Drawn';
-        groupSheet.addRow([round.name, tie.playerAName, tie.aggA ?? '', tie.aggB ?? '', tie.playerBName, result]);
-      }
-    }
   }
 
   const qualSheet = wb.addWorksheet('International League Qual.');

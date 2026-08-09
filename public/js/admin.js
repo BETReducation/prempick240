@@ -11,7 +11,7 @@ let ADMIN_PW = sessionStorage.getItem('pp240_adminpw') || null;
 let ALL_PREDS = [];    // every player's predictions — locked weeks only
 let USERS     = [];    // /api/users — { id, name } for cup/international player pickers
 let CUP       = { rounds: [] };
-let INTL      = { groups: [], knockout: [] };
+let INTL      = { groups: [] };
 
 const COMPS = ['PL', 'CH', 'CUP', 'INTL'];
 const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup', INTL: 'International' };
@@ -492,17 +492,14 @@ async function refresh() {
     adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => []),
     API.users().catch(() => []),
     adminFetch('/api/admin/cup').catch(() => ({ rounds: [] })),
-    adminFetch('/api/admin/international-league').catch(() => ({ groups: [], knockout: [] }))
+    adminFetch('/api/admin/international-league').catch(() => ({ groups: [] }))
   ]);
   GWS = gws;
   RESULTS = res.results || {};
   ALL_PREDS = preds || [];
   USERS = users || [];
   CUP  = { rounds: (cup.rounds || []).map(r => ({ ...r, ties: (r.ties || []).map(t => ({ replayGameweekIds: [], ...t })) })) };
-  INTL = {
-    groups: (intl.groups || []).map(g => ({ playerIds: [], matchdays: [], ...g })),
-    knockout: (intl.knockout || []).map(r => ({ legs: [null, null], ties: [], ...r }))
-  };
+  INTL = { groups: (intl.groups || []).map(g => ({ playerIds: [], matchdays: [], ...g })) };
   fillSelects();
   renderResultPanel();
   await renderPraisePreview();
@@ -664,27 +661,6 @@ function renderIntlPanel() {
       <button class="btn btn-outline btn-sm" data-intl-add-md="${gi}">+ Add matchday</button>
     </div>
   `).join('') || '<p class="empty">No groups yet — add one below.</p>';
-
-  el('intlKnockout').innerHTML = INTL.knockout.map((round, ri) => `
-    <div class="admin-grid" style="margin-bottom:8px;">
-      <div class="form-group">
-        <label>Round name</label>
-        <input type="text" data-ko-name="${ri}" value="${esc(round.name || '')}" placeholder="Semi-Final">
-      </div>
-      <div class="form-group"><label>1st leg</label><select data-ko-leg="${ri}.0">${gwOptions(round.legs?.[0]?.gameweekId)}</select></div>
-      <div class="form-group"><label>2nd leg <span style="color:var(--muted);font-size:11px;">(blank = single leg)</span></label><select data-ko-leg="${ri}.1">${gwOptions(round.legs?.[1]?.gameweekId)}</select></div>
-      <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-ko-remove-round="${ri}">Remove round</button></div>
-    </div>
-    ${(round.ties || []).map((tie, ti) => `
-      <div class="admin-grid" style="margin-left:16px;">
-        <div class="form-group"><label>Player A</label><select data-ko-tie-a="${ri}.${ti}">${playerOptions(tie.playerA)}</select></div>
-        <div class="form-group"><label>Player B</label><select data-ko-tie-b="${ri}.${ti}">${playerOptions(tie.playerB)}</select></div>
-        <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-ko-remove-tie="${ri}.${ti}">Remove tie</button></div>
-      </div>`).join('')}
-    <div class="admin-bar" style="margin-left:16px;">
-      <button class="btn btn-outline btn-sm" data-ko-add-tie="${ri}">+ Add tie</button>
-    </div>
-  `).join('') || '<p class="empty">No knockout rounds yet.</p>';
 }
 
 el('intlGroups')?.addEventListener('input', e => {
@@ -735,46 +711,10 @@ el('addIntlGroupBtn')?.addEventListener('click', () => {
   renderIntlPanel();
 });
 
-el('intlKnockout')?.addEventListener('input', e => {
-  const t = e.target;
-  if (t.dataset.koName !== undefined) INTL.knockout[t.dataset.koName].name = t.value;
-});
-el('intlKnockout')?.addEventListener('change', e => {
-  const t = e.target;
-  if (t.dataset.koLeg !== undefined) {
-    const [ri, li] = t.dataset.koLeg.split('.').map(Number);
-    if (!INTL.knockout[ri].legs) INTL.knockout[ri].legs = [];
-    INTL.knockout[ri].legs[li] = t.value ? { gameweekId: t.value } : null;
-  }
-  if (t.dataset.koTieA !== undefined) {
-    const [ri, ti] = t.dataset.koTieA.split('.').map(Number);
-    INTL.knockout[ri].ties[ti].playerA = t.value || null;
-  }
-  if (t.dataset.koTieB !== undefined) {
-    const [ri, ti] = t.dataset.koTieB.split('.').map(Number);
-    INTL.knockout[ri].ties[ti].playerB = t.value || null;
-  }
-});
-el('intlKnockout')?.addEventListener('click', e => {
-  const t = e.target;
-  if (t.dataset.koRemoveRound !== undefined) { INTL.knockout.splice(t.dataset.koRemoveRound, 1); renderIntlPanel(); }
-  if (t.dataset.koAddTie !== undefined) {
-    INTL.knockout[t.dataset.koAddTie].ties.push({ playerA: null, playerB: null }); renderIntlPanel();
-  }
-  if (t.dataset.koRemoveTie !== undefined) {
-    const [ri, ti] = t.dataset.koRemoveTie.split('.').map(Number);
-    INTL.knockout[ri].ties.splice(ti, 1); renderIntlPanel();
-  }
-});
-el('addIntlRoundBtn')?.addEventListener('click', () => {
-  INTL.knockout.push({ name: '', legs: [null, null], ties: [] });
-  renderIntlPanel();
-});
-
 async function saveIntl() {
   el('intlStatus').textContent = 'Saving…';
   try {
-    await adminFetch('/api/admin/international-league', { method: 'POST', body: JSON.stringify({ groups: INTL.groups, knockout: INTL.knockout }) });
+    await adminFetch('/api/admin/international-league', { method: 'POST', body: JSON.stringify({ groups: INTL.groups }) });
     el('intlStatus').textContent = '✓ Saved';
     setTimeout(() => el('intlStatus').textContent = '', 2000);
   } catch (e) {
