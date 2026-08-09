@@ -285,11 +285,25 @@ async function saveGameweek() {
   if (matches.length !== 6 &&
       !confirm(`You've filled in ${matches.length} fixtures, not 6. A week needs all six for anyone to win praise. Save anyway?`)) return;
 
-  const id = EDIT_ID === '__new__' ? `gw${number}` : EDIT_ID;
+  // A new gameweek's id must NOT be derived from `number` — two different
+  // weeks that briefly share a number (e.g. a mislabel, or editing an
+  // existing week's number instead of hitting "+ New gameweek") would then
+  // collide on save and silently overwrite each other. Real incident: this
+  // is exactly how a saved Gameweek 3 vanished after making a fresh
+  // Gameweek 2 — both computed id "gw2". Match Cup/International's own
+  // id scheme (Date.now, base36) instead.
+  const id = EDIT_ID === '__new__' ? `gw_${Date.now().toString(36)}` : EDIT_ID;
+
+  const clash = GWS.gameweeks.find(g => g.number === number && g.id !== id);
+  if (clash && !confirm(
+    `Gameweek ${number} already exists ("${clash.label}") — saving will overwrite it. Continue?`
+  )) return;
+
   const payload = {
     id, number, label: label || `Gameweek ${number}`,
     lockTime,
-    matches: matches.map((m, i) => ({ ...m, id: `${id}-m${i + 1}` }))
+    matches: matches.map((m, i) => ({ ...m, id: `${id}-m${i + 1}` })),
+    ...(clash ? { allowNumberClash: true } : {})
   };
 
   el('saveGwBtn').disabled = true;

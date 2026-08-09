@@ -598,7 +598,7 @@ app.get('/api/lock-status', (req, res) => {
 // ── Admin: create / update / delete a gameweek ─────────────────────────────────
 
 app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
-  const { id, number, label, lockTime, praise, matches } = req.body;
+  const { id, number, label, lockTime, praise, matches, allowNumberClash } = req.body;
   if (!id || !Array.isArray(matches) || matches.length === 0)
     return res.status(400).json({ error: 'id and a non-empty matches array are required' });
   if (lockTime && isNaN(new Date(lockTime).getTime()))
@@ -631,7 +631,8 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
   const gws  = readGameweeks();
   if (!Array.isArray(gws.gameweeks)) gws.gameweeks = [];
   // Number.isInteger, not `|| fallback` — gameweek 0 is a legitimate number.
-  const num = Number.isInteger(parseInt(number)) ? parseInt(number) : gws.gameweeks.length + 1;
+  const num   = Number.isInteger(parseInt(number)) ? parseInt(number) : gws.gameweeks.length + 1;
+  const gwId  = sanitise(id, 40);
 
   // The deadline isn't a separate thing to set — it's always the earliest
   // kick-off across the week's fixtures, so predictions always close before
@@ -640,8 +641,17 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
   const kickoffs = clean.map(m => m.kickoff).filter(Boolean).map(k => new Date(k).getTime()).filter(t => !isNaN(t));
   const autoLockTime = kickoffs.length ? new Date(Math.min(...kickoffs)).toISOString() : null;
 
+  // A second week saved with the same number as an existing (different) one
+  // used to be indistinguishable from a legitimate overwrite — the admin UI
+  // now confirms this with the admin first, and sets allowNumberClash once
+  // they've agreed. Reject anything that skips that (e.g. a direct API
+  // call) so two gameweeks can't silently collide.
+  const clash = gws.gameweeks.find(g => g.number === num && g.id !== gwId);
+  if (clash && !allowNumberClash)
+    return res.status(409).json({ error: `Gameweek ${num} already exists ("${clash.label}", id ${clash.id}). Pass allowNumberClash to overwrite deliberately.` });
+
   const next = {
-    id: sanitise(id, 40),
+    id: gwId,
     number: num,
     label: sanitise(label || `Gameweek ${num}`, 60),
     lockTime: autoLockTime || lockTime || null,
