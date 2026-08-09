@@ -107,7 +107,7 @@ function renderMotw(board, gws) {
           </span>
           <span class="praise-amount">${max}/6 correct</span>
         </div>`).join('')}
-    </div>` : '<p class="empty">No completed gameweeks yet.</p>';
+    </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 }
 
 function renderPraise(praise, board) {
@@ -180,7 +180,7 @@ function renderPraise(praise, board) {
             :                        pts(w.pot)
           }</span>
         </div>`).join('')}
-    </div>` : '<p class="empty">No completed gameweeks yet.</p>';
+    </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 
 }
 

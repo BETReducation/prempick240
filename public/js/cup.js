@@ -15,7 +15,7 @@ function fmtDate(iso) {
 function renderRounds(cup) {
   const rounds = cup.rounds || [];
   if (!rounds.length) {
-    el('cupRounds').innerHTML = '<p class="empty">The cup bracket hasn\'t been set up yet.</p>';
+    el('cupRounds').innerHTML = '<p class="empty wide-empty">The cup bracket hasn\'t been set up yet.</p>';
     el('cupSchedule').innerHTML = '';
     return;
   }
@@ -49,7 +49,7 @@ function renderRounds(cup) {
         </tbody>
       </table>
     </div>
-  `).join('') : '<p class="empty">No rounds under way yet — check the schedule below.</p>';
+  `).join('') : '<p class="empty wide-empty">No rounds under way yet — check the schedule below.</p>';
 
   if (!upcoming.length) {
     el('cupSchedule').innerHTML = '';

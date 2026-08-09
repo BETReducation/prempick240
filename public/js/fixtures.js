@@ -194,7 +194,7 @@ function renderEveryonesPredictions(gw) {
     .filter(p => p.picks.some(Boolean));
 
   if (!rows.length) {
-    box.innerHTML = '<p class="empty">Nobody entered predictions for this week.</p>';
+    box.innerHTML = '<p class="empty wide-empty">Nobody entered predictions for this week.</p>';
     return;
   }
 

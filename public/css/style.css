@@ -1855,6 +1855,16 @@ footer span {
 .section-note { font-size: 12px; color: var(--muted); }
 .empty { color: var(--muted); font-size: 13px; }
 
+/* A bare "nothing here yet" placeholder that sits directly in a --wide
+   (1100px) content section, with no table around it to anchor it, drifts
+   to the wide section's own left edge instead of lining up under the
+   narrower (760px) heading above — the two are centered independently, so
+   their left edges only coincide once the viewport exceeds ~824px. Redo
+   the heading's own max-width + padding here, nested one level deeper,
+   which cancels the wide section's extra width mathematically. */
+.wide-empty { max-width: 760px; margin: 0 auto; }
+@media (min-width: 641px) { .wide-empty { padding: 0 2rem; } }
+
 .cup-schedule-details {
   border: 1px solid var(--border);
   border-radius: 10px;

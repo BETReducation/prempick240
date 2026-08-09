@@ -7,7 +7,7 @@ function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;',
 
 function renderGroups(groups) {
   if (!groups.length) {
-    el('intlGroupTables').innerHTML = '<p class="empty">Groups haven\'t been drawn yet.</p>';
+    el('intlGroupTables').innerHTML = '<p class="empty wide-empty">Groups haven\'t been drawn yet.</p>';
     return;
   }
   el('intlGroupTables').innerHTML = groups.map(g => `
