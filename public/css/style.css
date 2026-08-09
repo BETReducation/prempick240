@@ -1855,6 +1855,34 @@ footer span {
 .section-note { font-size: 12px; color: var(--muted); }
 .empty { color: var(--muted); font-size: 13px; }
 
+.cup-schedule-details {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+}
+.cup-schedule-details summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cup-schedule-details summary::-webkit-details-marker { display: none; }
+.cup-schedule-details summary::after {
+  content: '+';
+  font-size: 18px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.cup-schedule-details[open] summary::after { transform: rotate(45deg); }
+.cup-schedule-details .table-wrap { border-top: 1px solid var(--border); }
+
 /* ── Narrow screens ──────────────────────────────────────────────────────── */
 
 @media (max-width: 720px) {

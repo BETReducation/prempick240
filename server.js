@@ -1198,7 +1198,17 @@ function calcCup() {
   board.forEach(p => { byId[p.id] = p; });
   const label = id => id ? (byId[id] ? (byId[id].displayName || byId[id].name) : 'Unknown player') : 'BYE';
 
+  const gwsById = {};
+  (readGameweeks().gameweeks || []).forEach(g => { gwsById[g.id] = g; });
+  const gwSummary = gwId => {
+    const g = gwsById[gwId];
+    if (!g) return null;
+    const dates = (g.matches || []).map(m => m.date).filter(Boolean).sort();
+    return { number: g.number, label: g.label, date: dates[0] || null };
+  };
+
   const rounds = (cup.rounds || []).map(round => {
+    const gameweek = gwSummary(round.gameweekId);
     const ties = (round.ties || []).map(tie => {
       if (!tie.playerB) {
         return { ...tie, playerAName: label(tie.playerA), playerBName: 'BYE', winner: tie.playerA, winnerName: label(tie.playerA) };
@@ -1220,7 +1230,7 @@ function calcCup() {
         pending, needsReplay
       };
     });
-    return { ...round, ties };
+    return { ...round, gameweek, ties };
   });
 
   return { rounds };
