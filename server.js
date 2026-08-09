@@ -1295,7 +1295,7 @@ function calcCup() {
     const gameweek = gwSummary(round.gameweekId);
     const ties = (round.ties || []).map(tie => {
       if (!tie.playerB) {
-        return { ...tie, playerAName: label(tie.playerA), playerBName: 'BYE', winner: tie.playerA, winnerName: label(tie.playerA) };
+        return { ...tie, playerAName: label(tie.playerA), playerBName: 'BYE', bye: true, winner: tie.playerA, winnerName: label(tie.playerA) };
       }
       const weeks = [round.gameweekId, ...(tie.replayGameweekIds || [])];
       let scoreA = null, scoreB = null, winner = null, pending = false, needsReplay = false;

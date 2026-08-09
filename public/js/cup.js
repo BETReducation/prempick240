@@ -16,7 +16,15 @@ function fmtDate(iso) {
 // the scores themselves. Shared by real ties and the placeholder bracket —
 // placeholder ties just carry {playerAName, playerBName, placeholder:true}
 // and nothing else, so every other field naturally falls through to blank.
+//
+// A bye is shown as a single-line entry — just the player's name, no "v
+// BYE" second row and no opponent to have "beaten" — rather than a two-row
+// card implying a pairing that never happened. Real ties flag this with
+// bye:true (see calcCup() in server.js); placeholder ties do the same.
 function renderTie(tie) {
+  if (tie.bye) {
+    return `<div class="bracket-tie bracket-tie--bye"><div class="bracket-tie-player ${tie.placeholder ? 'placeholder' : ''}"><span>${esc(tie.playerAName)}</span></div></div>`;
+  }
   const row = (name, isWinner, score) => `
     <div class="bracket-tie-player ${isWinner ? 'winner' : ''} ${tie.placeholder ? 'placeholder' : ''}">
       <span>${esc(name)}</span>
@@ -66,7 +74,7 @@ function placeholderTies(tieCount, byeCount) {
     seed += 2;
   }
   for (let i = 0; i < byeCount; i++) {
-    ties.push({ playerAName: `Player ${seed}`, playerBName: 'BYE', placeholder: true });
+    ties.push({ playerAName: `Player ${seed}`, bye: true, placeholder: true });
     seed += 1;
   }
   return ties;
