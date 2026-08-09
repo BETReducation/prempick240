@@ -1880,6 +1880,7 @@ footer span {
   border-radius: 10px;
   padding: 0;
   overflow: hidden;
+  margin-bottom: 24px;
 }
 .cup-schedule-details summary {
   cursor: pointer;
