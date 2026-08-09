@@ -112,8 +112,7 @@ function buildReadme(wb) {
     '  Predictions                   Every player\'s raw score predictions, written the moment they save',
     '  Position History              League position per player per completed week, plus best/worst',
     '  PP Cup                        Knockout bracket — ties decided by that week\'s results-correct count',
-    '  International League          Round-robin group league, fed by international-tagged gameweeks',
-    '  International League Qual.    Current standings, for reference when seeding groups'
+    '  International League          Same accrual as League Table, totalled over international-tagged gameweeks only'
   ];
   lines.forEach((line, i) => { sheet.getCell(i + 1, 1).value = line; });
   sheet.getCell(1, 1).font = { bold: true, size: 14 };
@@ -249,22 +248,12 @@ function buildCup(wb, cup) {
 }
 
 function buildInternational(wb, intl) {
-  const groupSheet = wb.addWorksheet('International League');
-  autoWidth(groupSheet, [14, 22, 6, 6, 6, 6, 6, 6, 6, 6]);
-  let header = groupSheet.addRow(['Group', 'Player', 'P', 'W', 'D', 'L', 'F', 'A', 'GD', 'Pts']);
+  const sheet = wb.addWorksheet('International League');
+  autoWidth(sheet, [6, 28, 10, 10, 10]);
+  const header = sheet.addRow(['Rank', 'Player', 'Results', 'Exact', 'Played']);
   styledHeader(header);
-  for (const group of intl.groups || []) {
-    group.table.forEach(row => {
-      groupSheet.addRow([group.name, row.name, row.played, row.won, row.drawn, row.lost, row.for, row.against, row.gd, row.points]);
-    });
-  }
-
-  const qualSheet = wb.addWorksheet('International League Qual.');
-  autoWidth(qualSheet, [6, 28, 10, 10]);
-  const qHeader = qualSheet.addRow(['Rank', 'Player', 'Results', 'Exact']);
-  styledHeader(qHeader);
-  (intl.qualification || []).forEach((p, i) => {
-    qualSheet.addRow([i + 1, nameOf(p), p.resultPoints, p.scorePoints]);
+  (intl.table || []).forEach((p, i) => {
+    sheet.addRow([i + 1, nameOf(p), p.resultPoints, p.scorePoints, p.played]);
   });
 }
 

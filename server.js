@@ -34,7 +34,6 @@ const SESSIONS_FILE     = path.join(PERSISTENT_DIR, 'sessions.json');
 const LEADERBOARD_PREV_FILE  = path.join(PERSISTENT_DIR, 'leaderboard-prev.json');
 const POSITION_HISTORY_FILE  = path.join(PERSISTENT_DIR, 'position-history.json');
 const CUP_FILE                = path.join(PERSISTENT_DIR, 'cup.json');
-const INTERNATIONAL_FILE      = path.join(PERSISTENT_DIR, 'international-league.json');
 const EXCEL_FILE               = path.join(PERSISTENT_DIR, 'PremPick240-League.xlsx');
 
 const ADMIN_EMAIL = 'gbyatt@gmail.com';
@@ -1225,12 +1224,14 @@ app.get('/api/position-history', (req, res) => res.json(calcPositionHistory()));
 // resolved by adding a replay gameweek to the tie (see admin Cup tab); until
 // then it's flagged needsReplay so admin knows to act on it.
 
-// Cup/International entry cuts off at the first kick-off of the first
-// CUP- or INTL-tagged gameweek (chronologically, across every gameweek —
-// past or future). Whoever's registered by then is in for good; anyone
-// registering after that instant is never eligible, even in later seasons
-// of the same cup, so latecomers can't dodge a tough early-round draw by
-// waiting. No such gameweek yet ⇒ no cutoff yet ⇒ everyone eligible.
+// PP Cup entry cuts off at the first kick-off of the first CUP- or
+// INTL-tagged gameweek (chronologically, across every gameweek — past or
+// future). Whoever's registered by then is in for good; anyone registering
+// after that instant is never eligible, so latecomers can't dodge a tough
+// early-round draw by waiting. No such gameweek yet ⇒ no cutoff yet ⇒
+// everyone eligible. (International itself has no roster/eligibility —
+// this only gates the Cup — but an INTL match still counts toward when
+// that cutoff instant fires, same as a CUP one.)
 function cupEligibilityCutoff() {
   let earliest = null;
   for (const gw of readGameweeks().gameweeks || []) {
@@ -1352,75 +1353,46 @@ app.post('/api/admin/cup', requireAdmin, (req, res) => {
 
 // ── International League ────────────────────────────────────────────────────────
 //
-// A round-robin league, not a knockout: each group plays a matchday per
-// international break, mapped to a gameweek, and the two players'
-// resultPoints in that gameweek are the "goalscore". The gameweeks
-// themselves are normal gameweeks — admin tags their matches comp:"INTL"
-// so the fixture list reads as internationals; results are entered exactly
-// the same way as any other week.
-
-function readInternational() {
-  return readJSON(INTERNATIONAL_FILE, { groups: [] });
-}
-
-function goalsFor(byId, playerId, gameweekId) {
-  const stats = byId[playerId]?.perGameweek[gameweekId];
-  return stats && stats.played > 0 ? stats.resultPoints : null;
-}
-
+// A simple side league, not a knockout and not groups — same accrual as the
+// main Rankings table (1 point per correct result, a separate point per
+// exact scoreline), just totalled over international-tagged gameweeks only.
+// Nothing to configure: admin tags a gameweek's matches comp:"INTL" (same
+// Fixtures panel as any other week) and this table picks it up automatically,
+// same as the main leaderboard needs no setup beyond publishing gameweeks.
 function calcInternationalLeague() {
-  const data  = readInternational();
-  const board = calcLeaderboard();
-  const byId  = {};
-  board.forEach(p => { byId[p.id] = p; });
-  const label = id => byId[id] ? (byId[id].displayName || byId[id].name) : 'Unknown player';
+  const users   = readJSON(PREDICTIONS_FILE, { users: [] }).users;
+  const results = readJSON(RESULTS_FILE,     { results: {} }).results || {};
+  const gws     = readGameweeks();
 
-  const groups = (data.groups || []).map(group => {
-    const table = {};
-    group.playerIds.forEach(id => {
-      table[id] = { id, name: label(id), played: 0, won: 0, drawn: 0, lost: 0, for: 0, against: 0 };
-    });
-    for (const md of group.matchdays || []) {
-      for (const fx of md.fixtures || []) {
-        const gf = goalsFor(byId, fx.home, md.gameweekId);
-        const ga = goalsFor(byId, fx.away, md.gameweekId);
-        if (gf == null || ga == null) continue;
-        const h = table[fx.home], a = table[fx.away];
-        if (!h || !a) continue;
-        h.played++; a.played++;
-        h.for += gf; h.against += ga;
-        a.for += ga; a.against += gf;
-        if (gf > ga)      { h.won++;  a.lost++; }
-        else if (gf < ga) { a.won++;  h.lost++; }
-        else              { h.drawn++; a.drawn++; }
+  const table = users.map(user => {
+    const preds = user.predictions || {};
+    let resultPoints = 0, scorePoints = 0, played = 0;
+
+    for (const gw of gws.gameweeks || []) {
+      for (const m of gw.matches || []) {
+        if (m.comp !== 'INTL') continue;
+        const result = results[m.id];
+        if (!result || !result.played) continue;
+        played++;
+        const pred = preds[m.id];
+        if (!pred) continue;
+        if (Math.sign(result.home - result.away) === Math.sign(pred.home - pred.away)) resultPoints++;
+        if (pred.home === result.home && pred.away === result.away) scorePoints++;
       }
     }
-    const rows = Object.values(table).map(r => ({
-      ...r, gd: r.for - r.against, points: r.won * 3 + r.drawn
-    })).sort((x, y) => y.points - x.points || y.gd - x.gd || y.for - x.for);
-    return { id: group.id, name: group.name, table: rows };
-  });
 
-  const qualification = board.slice().sort((a, b) =>
-    b.resultPoints - a.resultPoints || b.scorePoints - a.scorePoints
+    return {
+      id: user.id, name: user.name, displayName: user.displayName || user.name,
+      resultPoints, scorePoints, played
+    };
+  }).sort((a, b) =>
+    b.resultPoints - a.resultPoints || b.scorePoints - a.scorePoints || a.name.localeCompare(b.name)
   );
 
-  return { groups, qualification };
+  return { table };
 }
 
 app.get('/api/international-league', (req, res) => res.json(calcInternationalLeague()));
-
-// The raw, editable structure — what the admin International tab loads.
-app.get('/api/admin/international-league', requireAdmin, (req, res) => res.json(readInternational()));
-
-app.post('/api/admin/international-league', requireAdmin, (req, res) => {
-  const { groups } = req.body;
-  if (!Array.isArray(groups))
-    return res.status(400).json({ error: 'groups array required' });
-  writeJSON(INTERNATIONAL_FILE, { groups });
-  scheduleExcelSync();
-  res.json({ success: true });
-});
 
 // ── Excel mirror ───────────────────────────────────────────────────────────────
 //

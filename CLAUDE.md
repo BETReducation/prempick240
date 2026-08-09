@@ -23,10 +23,10 @@ design system, different domain model.
 | `public/index.html` | **Predictions** — the front page. This week's six fixtures + prediction entry. Past weeks via tabs. Deliberately shows no results; those live on Ranking. |
 | `public/ranking.html` | **Ranking** — season table + praise ledger |
 | `public/member.html` | Player profile (display name, bio, avatar, stats) |
-| `public/admin.html` | **Admin** — publish a week's fixtures, enter results, manage the Cup and International League, download the League Workbook. Linked in the nav for admin accounts only. |
+| `public/admin.html` | **Admin** — publish a week's fixtures, enter results, manage the PP Cup, download the League Workbook. Linked in the nav for admin accounts only. |
 | `public/reset.html` | Password reset landing page (email token) |
 | `public/cup.html` | **PP Cup** — read-only knockout bracket |
-| `public/international.html` | **International League** — round-robin group tables, qualification standings |
+| `public/international.html` | **International League** — simple side table, no admin setup needed |
 
 Login is a modal injected by `public/js/auth.js`, present on every page — same
 flow as WC26 (email + password, invite code required for new accounts).
@@ -68,9 +68,10 @@ Runtime state (gitignored, lives on the Railway volume in production):
 `predictions.json`, `results.json`, `access-codes.json`, `sessions.json`,
 `leaderboard-prev.json`, `position-history.json` (one position snapshot per
 completed gameweek, never overwritten), `cup.json` (PP Cup rounds/ties, ids
-only — scores are always derived, never stored), `international-league.json`
-(groups/matchdays, same ids-only shape), `PremPick240-League.xlsx`
-(the generated Excel mirror — see "Excel mirror" below).
+only — scores are always derived, never stored), `PremPick240-League.xlsx`
+(the generated Excel mirror — see "Excel mirror" below). International has
+no state file of its own — its table is computed live from `predictions.json`
++ `results.json` filtered to `INTL`-tagged matches, nothing to store.
 
 ## Scoring
 
@@ -187,12 +188,10 @@ tracking the player count.
   `CUP`-tagged gameweek, named after the real FA Cup's qualifying rounds,
   which thin the field the same way before the "first round proper". The
   PP Cup itself starts in January.
-- **International** — build the International League: groups of players with
-  round-robin matchdays, each mapped to an `INTL`-tagged gameweek. It's a
-  pure league — no knockout stage after the groups. Matchday "goals" are the
-  two players' `resultPoints` that week (`calcInternationalLeague()`).
-  Qualification is just the current season standings, shown for reference
-  when seeding groups — it isn't frozen at draw time.
+
+There is no International tab in admin — nothing to configure. Tag a
+gameweek's matches `INTL` on the Fixtures tab (same as `CUP`) and the
+International League table picks it up automatically, next request.
 
 Auth: `requireAdmin` accepts an admin user's session token, so a signed-in admin
 needs no password. The password box is a fallback and stores to `sessionStorage`.
@@ -202,8 +201,8 @@ needs no password. The password box is a fallback and stores to `sessionStorage`
 `excel.js` renders a generated `.xlsx` workbook (`PremPick240-League.xlsx`, on
 `PERSISTENT_DIR` like the other runtime files) that mirrors everything the
 server already computes: League Table, Form Guide, Manager Of The Week, Week
-Record, raw Predictions, Position History, PP Cup, International League +
-Qualification. **The server is the calculation engine — this file is a report,
+Record, raw Predictions, Position History, PP Cup, International League.
+**The server is the calculation engine — this file is a report,
 not a template.** Every cell is a value, not a formula; editing the workbook
 has no effect on the site. This is a deliberate exception to "always use
 formulas" — the workbook is regenerated from scratch on every sync, so there's
@@ -236,24 +235,26 @@ reassign ids already tied to existing predictions/results. If you need
 chronological order somewhere else (admin Records, Excel), sort a copy there
 too rather than touching the stored array.
 
-## Cup / International eligibility cutoff
+## PP Cup eligibility cutoff
 
 `cupEligibilityCutoff()` in `server.js` finds the earliest `kickoff` across
 every `CUP`- or `INTL`-tagged match in `gameweeks.json` (any gameweek, past
 or future — not just the current one). Whoever's registered before that
-instant is eligible for the Cup and International League, for good; anyone
-registering after it never is. No such gameweek yet ⇒ no cutoff yet ⇒
-everyone currently registered is eligible.
+instant is eligible for the PP Cup, for good; anyone registering after it
+never is. No such gameweek yet ⇒ no cutoff yet ⇒ everyone currently
+registered is eligible. (International has no roster or eligibility concept
+at all — see "International League" below — so this cutoff only gates the
+Cup; an `INTL` match still counts toward *when* that cutoff fires, same as
+a `CUP` one.)
 
 This is computed live from each user's `registeredAt`, not stored — same
 "derive it, don't freeze it" approach as `totalPot`/`weeklyBase`. `GET
 /api/users` carries the result as `eligible` on each player, which is what
-`randomiseCupRound1()` in `admin.js` filters on. The manual player-picker
-dropdowns (Cup ties, International groups) are deliberately **not**
-filtered by this — they still list everyone, so admin can always override
-by hand without a previously-set tie or group member silently vanishing
-from a `<select>` if the computed cutoff ever shifts (e.g. an earlier
-CUP/INTL gameweek gets added later).
+`randomiseCupRound1()` in `admin.js` filters on. The manual Cup tie player
+pickers are deliberately **not** filtered by this — they still list
+everyone, so admin can always override by hand without a previously-set
+tie's player silently vanishing from a `<select>` if the computed cutoff
+ever shifts (e.g. an earlier CUP/INTL gameweek gets added later).
 
 ## The active gameweek — reveal & weekly-tally reset
 
@@ -326,8 +327,7 @@ submits — this was a real bug, not a hypothetical.
 | GET | `/api/position-history` | — | Position per completed gameweek, best/worst, movement |
 | GET | `/api/cup` | — | PP Cup bracket with computed scores/winners |
 | GET/POST | `/api/admin/cup` | Admin | Read/write the raw bracket structure |
-| GET | `/api/international-league` | — | Groups, qualification, all computed |
-| GET/POST | `/api/admin/international-league` | Admin | Read/write the raw groups structure |
+| GET | `/api/international-league` | — | Simple table, computed live, nothing to configure |
 | GET | `/api/admin/export-xlsx` | Admin | Download the current Excel mirror |
 
 Plus the auth/profile routes carried over unchanged from WC26 (`/api/register`,
@@ -374,11 +374,13 @@ Consequences:
 - `POST /api/admin/gameweeks` rebuilds each match object, so any field it
   doesn't explicitly copy is destroyed on save. It silently wiped every
   fixture's `date` once. If you add a per-match field, add it there too.
-- **The PP Cup and International League store only structure (ids), never
-  scores.** `calcCup()`/`calcInternationalLeague()` always derive scores from
-  `calcLeaderboard()`'s `perGameweek` at request time. Don't add a "score"
-  field to `cup.json`/`international-league.json` — it would drift from the
-  real predictions the moment a result is corrected.
+- **The PP Cup stores only structure (ids), never scores.** `calcCup()`
+  always derives scores from `calcLeaderboard()`'s `perGameweek` at request
+  time. Don't add a "score" field to `cup.json` — it would drift from the
+  real predictions the moment a result is corrected. International goes
+  further and stores nothing at all — no file, no admin-entered structure —
+  it's a live filter over `predictions.json`/`results.json`, recomputed
+  from scratch on every request.
 - There is no Bundesliga-style side league in this app, by design — it existed
   in the FP Liga spreadsheet this project was modelled on and was deliberately
   dropped when the International League replaced its Copa del Rey.

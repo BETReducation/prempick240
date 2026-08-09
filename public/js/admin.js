@@ -11,7 +11,6 @@ let ADMIN_PW = sessionStorage.getItem('pp240_adminpw') || null;
 let ALL_PREDS = [];    // every player's predictions — locked weeks only
 let USERS     = [];    // /api/users — { id, name } for cup/international player pickers
 let CUP       = { rounds: [] };
-let INTL      = { groups: [] };
 
 const COMPS = ['PL', 'CH', 'CUP', 'INTL'];
 const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup', INTL: 'International' };
@@ -486,27 +485,24 @@ function fillSelects() {
 }
 
 async function refresh() {
-  const [gws, res, preds, users, cup, intl] = await Promise.all([
+  const [gws, res, preds, users, cup] = await Promise.all([
     // Admin headers so this returns every week, including future ones not yet
     // revealed to players.
     adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => []),
     API.users().catch(() => []),
-    adminFetch('/api/admin/cup').catch(() => ({ rounds: [] })),
-    adminFetch('/api/admin/international-league').catch(() => ({ groups: [] }))
+    adminFetch('/api/admin/cup').catch(() => ({ rounds: [] }))
   ]);
   GWS = gws;
   RESULTS = res.results || {};
   ALL_PREDS = preds || [];
   USERS = users || [];
   CUP  = { rounds: (cup.rounds || []).map(r => ({ ...r, ties: (r.ties || []).map(t => ({ replayGameweekIds: [], ...t })) })) };
-  INTL = { groups: (intl.groups || []).map(g => ({ playerIds: [], matchdays: [], ...g })) };
   fillSelects();
   renderResultPanel();
   await renderPraisePreview();
   loadGwForEdit(el('editGw').value);
   renderRecords();
   renderCupPanel();
-  renderIntlPanel();
 }
 
 // ── Cup ──────────────────────────────────────────────────────────────────────
@@ -698,111 +694,6 @@ function randomiseCupRound1() {
   el('cupStatus').className = 'save-status ok';
 }
 
-// ── International League ─────────────────────────────────────────────────────
-
-function renderIntlPanel() {
-  el('intlGroups').innerHTML = INTL.groups.map((group, gi) => `
-    <div class="admin-grid" style="margin-bottom:8px;">
-      <div class="form-group">
-        <label>Group name</label>
-        <input type="text" data-intl-group-name="${gi}" value="${esc(group.name || '')}" placeholder="Group A">
-      </div>
-      <div class="form-group" style="align-self:end;">
-        <button class="btn btn-danger btn-sm" data-intl-remove-group="${gi}">Remove group</button>
-      </div>
-    </div>
-    <p class="admin-hint" style="margin-left:16px;">Players</p>
-    <div class="admin-bar" style="margin-left:16px;flex-wrap:wrap;">
-      ${(group.playerIds || []).map((pid, pi) => `
-        <select data-intl-player="${gi}.${pi}">${playerOptions(pid)}</select>`).join('')}
-      <button class="btn btn-outline btn-sm" data-intl-add-player="${gi}">+ Add player</button>
-    </div>
-    <p class="admin-hint" style="margin-left:16px;">Matchdays</p>
-    ${(group.matchdays || []).map((md, mi) => `
-      <div class="admin-grid" style="margin-left:16px;">
-        <div class="form-group">
-          <label>Matchday ${mi + 1} gameweek</label>
-          <select data-intl-md-gw="${gi}.${mi}">${gwOptions(md.gameweekId)}</select>
-        </div>
-        <div class="form-group" style="align-self:end;">
-          <button class="btn btn-danger btn-sm" data-intl-remove-md="${gi}.${mi}">Remove matchday</button>
-        </div>
-      </div>
-      ${(md.fixtures || []).map((fx, fi) => `
-        <div class="admin-grid" style="margin-left:32px;">
-          <div class="form-group"><label>Home</label><select data-intl-fx-home="${gi}.${mi}.${fi}">${playerOptions(fx.home)}</select></div>
-          <div class="form-group"><label>Away</label><select data-intl-fx-away="${gi}.${mi}.${fi}">${playerOptions(fx.away)}</select></div>
-          <div class="form-group" style="align-self:end;"><button class="btn btn-danger btn-sm" data-intl-remove-fx="${gi}.${mi}.${fi}">Remove fixture</button></div>
-        </div>`).join('')}
-      <div class="admin-bar" style="margin-left:32px;">
-        <button class="btn btn-outline btn-sm" data-intl-add-fx="${gi}.${mi}">+ Add fixture</button>
-      </div>
-    `).join('')}
-    <div class="admin-bar" style="margin-left:16px;">
-      <button class="btn btn-outline btn-sm" data-intl-add-md="${gi}">+ Add matchday</button>
-    </div>
-  `).join('') || '<p class="empty">No groups yet — add one below.</p>';
-}
-
-el('intlGroups')?.addEventListener('input', e => {
-  const t = e.target;
-  if (t.dataset.intlGroupName !== undefined) INTL.groups[t.dataset.intlGroupName].name = t.value;
-});
-el('intlGroups')?.addEventListener('change', e => {
-  const t = e.target;
-  if (t.dataset.intlPlayer !== undefined) {
-    const [gi, pi] = t.dataset.intlPlayer.split('.').map(Number);
-    INTL.groups[gi].playerIds[pi] = t.value || null;
-  }
-  if (t.dataset.intlMdGw !== undefined) {
-    const [gi, mi] = t.dataset.intlMdGw.split('.').map(Number);
-    INTL.groups[gi].matchdays[mi].gameweekId = t.value || null;
-  }
-  if (t.dataset.intlFxHome !== undefined) {
-    const [gi, mi, fi] = t.dataset.intlFxHome.split('.').map(Number);
-    INTL.groups[gi].matchdays[mi].fixtures[fi].home = t.value || null;
-  }
-  if (t.dataset.intlFxAway !== undefined) {
-    const [gi, mi, fi] = t.dataset.intlFxAway.split('.').map(Number);
-    INTL.groups[gi].matchdays[mi].fixtures[fi].away = t.value || null;
-  }
-});
-el('intlGroups')?.addEventListener('click', e => {
-  const t = e.target;
-  if (t.dataset.intlRemoveGroup !== undefined) { INTL.groups.splice(t.dataset.intlRemoveGroup, 1); renderIntlPanel(); }
-  if (t.dataset.intlAddPlayer !== undefined) { INTL.groups[t.dataset.intlAddPlayer].playerIds.push(null); renderIntlPanel(); }
-  if (t.dataset.intlAddMd !== undefined) {
-    INTL.groups[t.dataset.intlAddMd].matchdays.push({ gameweekId: null, fixtures: [] }); renderIntlPanel();
-  }
-  if (t.dataset.intlRemoveMd !== undefined) {
-    const [gi, mi] = t.dataset.intlRemoveMd.split('.').map(Number);
-    INTL.groups[gi].matchdays.splice(mi, 1); renderIntlPanel();
-  }
-  if (t.dataset.intlAddFx !== undefined) {
-    const [gi, mi] = t.dataset.intlAddFx.split('.').map(Number);
-    INTL.groups[gi].matchdays[mi].fixtures.push({ home: null, away: null }); renderIntlPanel();
-  }
-  if (t.dataset.intlRemoveFx !== undefined) {
-    const [gi, mi, fi] = t.dataset.intlRemoveFx.split('.').map(Number);
-    INTL.groups[gi].matchdays[mi].fixtures.splice(fi, 1); renderIntlPanel();
-  }
-});
-el('addIntlGroupBtn')?.addEventListener('click', () => {
-  INTL.groups.push({ id: 'grp_' + Date.now().toString(36), name: '', playerIds: [], matchdays: [] });
-  renderIntlPanel();
-});
-
-async function saveIntl() {
-  el('intlStatus').textContent = 'Saving…';
-  try {
-    await adminFetch('/api/admin/international-league', { method: 'POST', body: JSON.stringify({ groups: INTL.groups }) });
-    el('intlStatus').textContent = '✓ Saved';
-    setTimeout(() => el('intlStatus').textContent = '', 2000);
-  } catch (e) {
-    el('intlStatus').textContent = 'Error: ' + e.message;
-  }
-}
-
 async function boot() {
   el('loadingState').style.display = 'none';
   el('adminDenied').style.display  = 'none';
@@ -817,7 +708,6 @@ async function boot() {
       el('panel-fixtures').style.display = b.dataset.panel === 'fixtures' ? '' : 'none';
       el('panel-records').style.display  = b.dataset.panel === 'records'  ? '' : 'none';
       el('panel-cup').style.display          = b.dataset.panel === 'cup'          ? '' : 'none';
-      el('panel-international').style.display = b.dataset.panel === 'international' ? '' : 'none';
     }));
 
   el('recordGw').addEventListener('change', renderRecords);
@@ -835,7 +725,6 @@ async function boot() {
   });
   el('saveCupBtn').addEventListener('click', saveCup);
   el('randomiseCupBtn').addEventListener('click', randomiseCupRound1);
-  el('saveIntlBtn').addEventListener('click', saveIntl);
 
   el('resultGw').addEventListener('change', async () => { renderResultPanel(); await renderPraisePreview(); });
   el('saveResultsBtn').addEventListener('click', saveResults);
