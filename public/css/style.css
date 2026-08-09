@@ -1907,19 +1907,15 @@ footer span {
 /* Two columns, ties alternating left/right in draw order — tie 1 top-left,
    tie 2 top-right, tie 3 second-left, tie 4 second-right, and so on — so the
    bracket stays visually balanced as it grows, rather than filling one long
-   single column. Fixed (narrow) column width rather than 1fr/1fr — a real
-   bracket's round-1 columns are narrow and tall, not stretched to fill the
-   section, and the unused width in between is exactly where round 2, the
-   semis and the final will eventually sit as more columns are added. */
+   single column. 1fr/1fr rather than a fixed width — the tracks fill the
+   column exactly, so the bracket's own left/right edges line up with the
+   rules/intro text above it instead of sitting narrower with empty space
+   trailing to the right. */
 .bracket-columns {
   display: grid;
-  grid-template-columns: repeat(2, 200px);
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px 48px;
   align-items: start;
-  /* The grid box itself is block-level and fills its 760px column — center
-     the fixed-width tracks within that box rather than leaving them
-     flush-left with empty space trailing off to the right. */
-  justify-content: center;
 }
 .bracket-column { display: flex; flex-direction: column; gap: 14px; }
 .bracket-tie {
@@ -1936,9 +1932,23 @@ footer span {
   padding: 14px 12px;
   font-size: 13px;
 }
-.bracket-tie-player + .bracket-tie-player { border-top: 1px solid var(--border); }
 .bracket-tie-player.placeholder { color: var(--muted); font-style: italic; }
 .bracket-tie-player.winner { background: var(--accent-dim); font-weight: 700; color: var(--accent); }
+/* The "vs" divider between the two player rows — replaces what used to be
+   a plain border between adjacent rows, now carried on this element since
+   it sits between them instead. */
+.bracket-tie-vs {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 3px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
 .bracket-tie-score {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;

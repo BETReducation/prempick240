@@ -40,6 +40,7 @@ function renderTie(tie) {
   return `
     <div class="bracket-tie">
       ${row(tie.playerAName, isWinner(tie.playerA), tie.scoreA)}
+      <div class="bracket-tie-vs">vs</div>
       ${row(tie.playerBName, isWinner(tie.playerB), tie.scoreB)}
       ${result ? `<div class="bracket-tie-result">${result}</div>` : ''}
     </div>`;
