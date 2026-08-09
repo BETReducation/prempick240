@@ -1925,10 +1925,17 @@ footer span {
 }
 .bracket-column { display: flex; flex-direction: column; gap: 14px; }
 .bracket-tie {
-  border: 1px solid var(--border);
+  /* --border alone (rgba(0,0,0,0.08) in light mode) reads as almost
+     invisible against the page — --border2 is the stronger divider tone
+     used elsewhere on the site for exactly this "needs to actually show
+     up" case. */
+  border: 1.5px solid var(--border2);
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--surface);
+  /* Same elevation as .card elsewhere on the site — the shadow gives each
+     fixture some visual weight/separation on top of the stronger border. */
+  box-shadow: var(--shadow);
 }
 .bracket-tie-player {
   display: flex;
