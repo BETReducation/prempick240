@@ -191,11 +191,27 @@ function blankMatch(i) {
   return { id: '', comp: 'PL', home: '', away: '', date: '' };
 }
 
+// The deadline isn't typed in any more — it's always the earliest kick-off
+// among the fixtures below. This reads the live form state, not saved data,
+// so it updates as kick-offs are edited (see the input listener below).
+function earliestKickoffIso() {
+  const isos = [...el('fixtureRows').querySelectorAll('.fx-kickoff')]
+    .map(input => input.value ? ukLocalToUtcISO(input.value) : null)
+    .filter(Boolean);
+  if (!isos.length) return null;
+  return isos.reduce((min, iso) => iso < min ? iso : min);
+}
+
+function updateDeadlineEcho() {
+  const iso = earliestKickoffIso();
+  el('gwDeadlineEcho').textContent = iso
+    ? `Locks ${fmtUk(iso)} — the earliest kick-off above.`
+    : 'Set kick-off times below — the deadline is always the earliest one.';
+}
+
 function renderFixtureEditor(gw) {
   el('gwNumber').value   = gw.number ?? '';
   el('gwLabel').value    = gw.label ?? '';
-  el('gwDeadline').value = utcISOToUkLocal(gw.lockTime);
-  el('gwDeadlineEcho').textContent = gw.lockTime ? `Locks ${fmtUk(gw.lockTime)}` : '';
   el('saveGwBtn').textContent = 'Save Gameweek';
 
   const matches = (gw.matches && gw.matches.length)
@@ -219,10 +235,14 @@ function renderFixtureEditor(gw) {
           <input type="text" class="fx-home" data-i="${i}" value="${esc(m.home)}" placeholder="Home team" maxlength="60">
           <span class="fixture-v">v</span>
           <input type="text" class="fx-away" data-i="${i}" value="${esc(m.away)}" placeholder="Away team" maxlength="60">
-          <input type="datetime-local" class="fx-kickoff" data-i="${i}" value="${esc(utcISOToUkLocal(m.kickoff))}" title="Kick-off, UK time. Also sets the fixture's display date, and the latest kick-off in the week sets when the 'This week' count resets — ~2h after it.">
+          <input type="datetime-local" class="fx-kickoff" data-i="${i}" value="${esc(utcISOToUkLocal(m.kickoff))}" title="Kick-off, UK time. The earliest kick-off in the week is the prediction deadline; the latest is what the 'This week' count resets against, ~2h after it.">
         </div>`).join('')}
     </div>`;
+  updateDeadlineEcho();
 }
+el('fixtureRows')?.addEventListener('input', e => {
+  if (e.target.classList.contains('fx-kickoff')) updateDeadlineEcho();
+});
 
 function loadGwForEdit(id) {
   EDIT_ID = id;
@@ -239,12 +259,14 @@ async function saveGameweek() {
   const status = el('fixtureStatus');
   const number = parseInt(el('gwNumber').value);
   const label  = el('gwLabel').value.trim();
-  const local  = el('gwDeadline').value;
+  const lockTime = earliestKickoffIso();
 
   if (!Number.isInteger(number)) { status.textContent = 'Week number is required.'; status.className = 'save-status err'; return; }
-  if (!local) { status.textContent = 'A prediction deadline is required.'; status.className = 'save-status err'; return; }
+  if (!lockTime) { status.textContent = 'Set at least one kick-off time — that\'s what sets the deadline.'; status.className = 'save-status err'; return; }
 
-  const rows = [...el('fixtureRows').querySelectorAll('.admin-row.edit')];
+  // [data-i] excludes the header row — it shares .admin-row.edit for styling
+  // but carries no data-i, so including it here throws (null.value) on save.
+  const rows = [...el('fixtureRows').querySelectorAll('.admin-row.edit[data-i]')];
   const matches = rows.map(r => {
     const i = r.dataset.i;
     return {
@@ -266,7 +288,7 @@ async function saveGameweek() {
   const id = EDIT_ID === '__new__' ? `gw${number}` : EDIT_ID;
   const payload = {
     id, number, label: label || `Gameweek ${number}`,
-    lockTime: ukLocalToUtcISO(local),
+    lockTime,
     matches: matches.map((m, i) => ({ ...m, id: `${id}-m${i + 1}` }))
   };
 
@@ -789,10 +811,6 @@ async function boot() {
   // unsaved changes again, so flip it back to "Save Gameweek".
   el('panel-fixtures').addEventListener('input', () => {
     if (el('saveGwBtn').textContent !== 'Save Gameweek') el('saveGwBtn').textContent = 'Save Gameweek';
-  });
-  el('gwDeadline').addEventListener('change', () => {
-    const iso = ukLocalToUtcISO(el('gwDeadline').value);
-    el('gwDeadlineEcho').textContent = iso ? `Locks ${fmtUk(iso)}` : '';
   });
 }
 

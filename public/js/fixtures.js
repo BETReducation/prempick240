@@ -22,6 +22,17 @@ function fmtMatchDate(m) {
   return d.toLocaleString('en-GB', opts);
 }
 
+// Players see fixtures in kick-off order regardless of how admin entered
+// them. This is display-only — a sorted copy, never the stored array — so
+// it can't disturb the id <-> position relationship the admin Fixtures
+// editor relies on when it resaves a week.
+function sortedMatches(gw) {
+  const when = m => m.kickoff ? new Date(m.kickoff).getTime()
+    : m.date ? new Date(m.date + 'T12:00:00Z').getTime()
+    : Infinity;
+  return [...gw.matches].sort((a, b) => when(a) - when(b));
+}
+
 function el(id) { return document.getElementById(id); }
 
 function fmtLock(iso) {
@@ -122,7 +133,7 @@ function renderFixtures(gw) {
 
   el('fixtureList').innerHTML = `
     <div class="fixture-grid">
-      ${gw.matches.map((m, i) => {
+      ${sortedMatches(gw).map((m, i) => {
         const pred = MY_PREDS[m.id] || {};
         return `
         <div class="fixture-row">
@@ -175,9 +186,11 @@ function renderEveryonesPredictions(gw) {
     return;
   }
 
+  const matches = sortedMatches(gw);
+
   // Only players who actually entered something for this week.
   const rows = ALL_PREDS
-    .map(p => ({ ...p, picks: gw.matches.map(m => p.predictions[m.id]) }))
+    .map(p => ({ ...p, picks: matches.map(m => p.predictions[m.id]) }))
     .filter(p => p.picks.some(Boolean));
 
   if (!rows.length) {
@@ -189,12 +202,12 @@ function renderEveryonesPredictions(gw) {
 
   // Rank by results called right, so the table doubles as the week's scoreboard.
   rows.forEach(p => {
-    p.correct = gw.matches.reduce((n, m, i) => {
+    p.correct = matches.reduce((n, m, i) => {
       const r = RESULTS[m.id], pr = p.picks[i];
       if (!r || !r.played || !pr) return n;
       return n + (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away) ? 1 : 0);
     }, 0);
-    p.exact = gw.matches.reduce((n, m, i) => {
+    p.exact = matches.reduce((n, m, i) => {
       const r = RESULTS[m.id], pr = p.picks[i];
       if (!r || !r.played || !pr) return n;
       return n + (pr.home === r.home && pr.away === r.away ? 1 : 0);
@@ -202,7 +215,7 @@ function renderEveryonesPredictions(gw) {
   });
   rows.sort((a, b) => b.correct - a.correct || b.exact - a.exact || a.name.localeCompare(b.name));
 
-  const anyResults = gw.matches.some(m => RESULTS[m.id]?.played);
+  const anyResults = matches.some(m => RESULTS[m.id]?.played);
 
   box.innerHTML = `
     <h3 class="subsection-title">Everyone's predictions</h3>
@@ -211,7 +224,7 @@ function renderEveryonesPredictions(gw) {
         <thead>
           <tr>
             <th class="col-player">Player</th>
-            ${gw.matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
+            ${matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
             ${anyResults ? '<th class="col-pts">Results</th><th class="col-pts">Exact</th>' : ''}
           </tr>
         </thead>
@@ -219,7 +232,7 @@ function renderEveryonesPredictions(gw) {
           ${rows.map(p => `
             <tr class="${p.id === userId ? 'is-me' : ''}">
               <td class="col-player">${esc(p.displayName || p.name)}</td>
-              ${gw.matches.map((m, i) => {
+              ${matches.map((m, i) => {
                 const pr = p.picks[i], r = RESULTS[m.id];
                 if (!pr) return '<td class="col-fx muted">—</td>';
                 let cls = '';
@@ -235,7 +248,7 @@ function renderEveryonesPredictions(gw) {
           ${anyResults ? `
             <tr class="actual-row">
               <td class="col-player">Actual</td>
-              ${gw.matches.map(m => {
+              ${matches.map(m => {
                 const r = RESULTS[m.id];
                 return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
               }).join('')}

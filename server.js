@@ -632,11 +632,19 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
   if (!Array.isArray(gws.gameweeks)) gws.gameweeks = [];
   // Number.isInteger, not `|| fallback` — gameweek 0 is a legitimate number.
   const num = Number.isInteger(parseInt(number)) ? parseInt(number) : gws.gameweeks.length + 1;
+
+  // The deadline isn't a separate thing to set — it's always the earliest
+  // kick-off across the week's fixtures, so predictions always close before
+  // the first ball is kicked. A submitted `lockTime` is only a fallback for
+  // a week whose fixtures don't have kick-off times yet.
+  const kickoffs = clean.map(m => m.kickoff).filter(Boolean).map(k => new Date(k).getTime()).filter(t => !isNaN(t));
+  const autoLockTime = kickoffs.length ? new Date(Math.min(...kickoffs)).toISOString() : null;
+
   const next = {
     id: sanitise(id, 40),
     number: num,
     label: sanitise(label || `Gameweek ${num}`, 60),
-    lockTime: lockTime || null,
+    lockTime: autoLockTime || lockTime || null,
     // Only persist an override when one was explicitly supplied. Storing a
     // value here (especially 0) would pin the week's allocation and stop it
     // tracking the registered-player count.

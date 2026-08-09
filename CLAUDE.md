@@ -132,14 +132,23 @@ tracking the player count.
   "Export CSV" dumps *every* locked week, not just the one on screen.
   Unlocked weeks stay hidden here too — the admin plays, so revealing them
   early would be a fairness hole.
-- **Fixtures** — create or edit a gameweek: number, label, deadline and six
-  fixtures. The deadline input is **UK wall-clock**, converted to UTC on save by
-  `ukLocalToUtcISO()`, which iterates against `Europe/London` rather than
-  trusting the browser's zone. Verified across BST, GMT and both clock-change
-  days — the season spans the October change, so this matters. A "Download
-  League Workbook" button here streams the current Excel mirror (see below).
-  `comp` now also accepts `"INTL"` for international-fixture gameweeks that
-  feed the International League.
+- **Fixtures** — create or edit a gameweek: number, label and six fixtures.
+  There's no separate deadline field — `lockTime` is always the earliest
+  `kickoff` among the week's fixtures, computed server-side in
+  `POST /api/admin/gameweeks` (and mirrored live in the admin form by
+  `earliestKickoffIso()` as you type kick-offs in). That guarantees
+  predictions always close before the first ball is kicked, and means
+  publishing a week is just entering fixtures — nothing to remember to set
+  separately. A week saved with no kick-off times yet keeps whatever
+  `lockTime` was last set (or none), so you can publish a placeholder week
+  before times are confirmed. Kick-off is **UK wall-clock**, converted to
+  UTC on save by `ukLocalToUtcISO()`, which iterates against
+  `Europe/London` rather than trusting the browser's zone. Verified across
+  BST, GMT and both clock-change days — the season spans the October
+  change, so this matters. A "Download League Workbook" button here
+  streams the current Excel mirror (see below). `comp` now also accepts
+  `"INTL"` for international-fixture gameweeks that feed the International
+  League.
 - **Cup** — build the FP Cup knockout bracket: rounds, each assigned a
   gameweek, and ties pairing two players (or a bye). A tie needs no fixture of
   its own — its "score" is simply both players' `resultPoints` in the round's
@@ -184,6 +193,15 @@ reflects it.
 
 Before a week locks, `/api/predictions` **omits** other players' picks for that
 week. Don't remove that filter; it's what stops players copying each other.
+
+Players see a week's fixtures in kick-off order, not entry order — `fixtures.js`
+sorts a display-only copy (`sortedMatches()`) before rendering the fixture list
+and the "everyone's predictions" grid. The stored `gameweeks.json` order is left
+alone: the admin Fixtures editor relies on array position to assign match ids
+(`${gwId}-m${i+1}`) on save, so re-sorting the stored array would silently
+reassign ids already tied to existing predictions/results. If you need
+chronological order somewhere else (admin Records, Excel), sort a copy there
+too rather than touching the stored array.
 
 ## The active gameweek — reveal & weekly-tally reset
 
