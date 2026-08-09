@@ -1249,6 +1249,29 @@ function isCupEligible(user, cutoffIso) {
   return new Date(user.registeredAt).getTime() < new Date(cutoffIso).getTime();
 }
 
+// Byes exist only in Round 1, never again — every round after has to land
+// on a clean power of two, or a later round would need a bye too. That
+// means the *minority* plays Round 1, not the majority: only enough ties
+// to trim the excess above the largest power of two ≤ N, everyone else
+// gets a bye. (Round 2 total = ties won + byes = target, always exact —
+// see the admin/user discussion this was worked out in.) When byes
+// outnumber ties, admin calls this round "FA Cup Qualifier" instead of
+// "Round 1" — matching how the real FA Cup's qualifying rounds thin the
+// field before the "first round proper".
+function largestPow2LE(n) {
+  let p = 1;
+  while (p * 2 <= n) p *= 2;
+  return p;
+}
+function round1Shape(n) {
+  if (n < 2) return { tieCount: 0, byeCount: 0, name: 'Round 1' };
+  const target = largestPow2LE(n);
+  const excess = n - target;
+  const tieCount = excess === 0 ? Math.floor(n / 2) : excess;
+  const byeCount = n - tieCount * 2;
+  return { tieCount, byeCount, name: byeCount > tieCount ? 'FA Cup Qualifier' : 'Round 1' };
+}
+
 function readCup() { return readJSON(CUP_FILE, { rounds: [] }); }
 
 function calcCup() {
@@ -1295,12 +1318,21 @@ function calcCup() {
 
   // Lets the public Cup page draw a placeholder bracket (Player 1 v Player 2,
   // …) sized to however many eligible players there are right now, before
-  // admin has drawn — let alone entered — a real Round 1.
+  // admin has drawn — let alone entered — a real Round 1. Shape (tie/bye
+  // counts, and whether it's a normal Round 1 or an FA Cup Qualifier) comes
+  // from round1Shape() so the preview always matches what Randomise would
+  // actually produce.
   const cutoff = cupEligibilityCutoff();
   const eligibleCount = (readJSON(PREDICTIONS_FILE, { users: [] }).users || [])
     .filter(u => isCupEligible(u, cutoff)).length;
+  const preview = round1Shape(eligibleCount);
 
-  return { rounds, eligibleCount };
+  return {
+    rounds, eligibleCount,
+    previewRoundName: preview.name,
+    previewTieCount: preview.tieCount,
+    previewByeCount: preview.byeCount
+  };
 }
 
 app.get('/api/cup', (req, res) => res.json(calcCup()));

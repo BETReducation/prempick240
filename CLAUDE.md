@@ -83,6 +83,14 @@ An exact scoreline scores in both. Ranking is `resultPoints` desc, then
 `scorePoints` desc, then name. The second column exists for tie-breaking and
 end-of-season awards, which is why it is kept separate rather than added on.
 
+`comp` (`PL`/`CH`/`CUP`/`INTL`) is purely a display tag — `calcLeaderboard()`
+and `calcPraise()` both loop over every match in every gameweek with no
+`comp` filtering at all, by construction. An FA Cup or International
+gameweek's results count toward the main table and weekly jackpot exactly
+like any other week; the Cup/International pages are just a second read of
+the same `resultPoints`, never a separate score. Don't add a `comp` check
+into either function — that would silently split scoring in two.
+
 ## Praise
 
 Praise is a finite pot of **points** — bragging rights and certificates, not
@@ -160,6 +168,21 @@ tracking the player count.
   exists, the public Cup page shows a placeholder bracket ("Player 1" v
   "Player 2", …) sized to the current eligible headcount, so the shape of
   the draw is visible before anyone's actually seeded into it.
+
+  **Byes only ever happen in Round 1** — no round after that should ever
+  need one, since predictions-based ties can't produce a draw that needs
+  a bye to resolve. That constraint means the *minority* plays Round 1,
+  not the majority: `round1Shape()` in `server.js` (mirrored in
+  `admin.js` — keep both in sync) plays only enough ties to trim the
+  field down to the largest power of two ≤ N; everyone else gets a bye,
+  so Round 2 lands exactly on that power of two. E.g. 20 players → only
+  4 ties (8 players) play, 12 get a bye, Round 2 = 4 + 12 = 16 exactly.
+  This inverts the naive guess (majority plays, minority byes) — that
+  version leaves Round 2 unbalanced one round later. When byes outnumber
+  ties, the round is named **"FA Cup Qualifier"** instead of "Round 1" —
+  it's the round where admin publishes the season's first real
+  `CUP`-tagged gameweek, mirroring how the real FA Cup's qualifying
+  rounds thin the field before the "first round proper".
 - **International** — build the International League: groups of players with
   round-robin matchdays, each mapped to an `INTL`-tagged gameweek. It's a
   pure league — no knockout stage after the groups. Matchday "goals" are the

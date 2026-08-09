@@ -524,7 +524,10 @@ function gwOptions(selected) {
 
 function renderCupPanel() {
   const eligibleCount = USERS.filter(u => u.eligible !== false).length;
-  el('randomiseCupHint').textContent = `${eligibleCount} player${eligibleCount === 1 ? '' : 's'} eligible right now`;
+  const shape = round1Shape(eligibleCount);
+  el('randomiseCupHint').textContent = eligibleCount < 2
+    ? `${eligibleCount} player${eligibleCount === 1 ? '' : 's'} eligible right now`
+    : `${eligibleCount} eligible → ${shape.name}: ${shape.tieCount} tie${shape.tieCount === 1 ? '' : 's'}, ${shape.byeCount} bye${shape.byeCount === 1 ? '' : 's'}`;
 
   el('cupRounds').innerHTML = CUP.rounds.map((round, ri) => `
     <div class="admin-grid" style="margin-bottom:8px;">
@@ -620,6 +623,26 @@ async function saveCup() {
   }
 }
 
+// Byes exist only in Round 1, never again — so every later round lands on
+// a clean power of two, or a later round would need a bye too. That means
+// the minority plays Round 1, not the majority: only enough ties to trim
+// the excess above the largest power of two ≤ n play; everyone else gets a
+// bye. Mirrors round1Shape() in server.js (which drives the public preview
+// on cup.html) — keep the two in sync if this changes.
+function largestPow2LE(n) {
+  let p = 1;
+  while (p * 2 <= n) p *= 2;
+  return p;
+}
+function round1Shape(n) {
+  if (n < 2) return { tieCount: 0, byeCount: 0, name: 'Round 1' };
+  const target = largestPow2LE(n);
+  const excess = n - target;
+  const tieCount = excess === 0 ? Math.floor(n / 2) : excess;
+  const byeCount = n - tieCount * 2;
+  return { tieCount, byeCount, name: byeCount > tieCount ? 'FA Cup Qualifier' : 'Round 1' };
+}
+
 // Shuffles every eligible player (see cupEligibilityCutoff() in server.js —
 // registered before the first CUP/INTL kick-off) into Round 1 pairings and
 // stages them into CUP.rounds. Doesn't save on its own — admin reviews the
@@ -631,8 +654,6 @@ function randomiseCupRound1() {
     alert(`Only ${eligible.length} eligible player(s) — need at least 2 to draw a round.`);
     return;
   }
-  if (!confirm(`Randomise Round 1 with ${eligible.length} eligible players? This replaces Round 1's current pairings (you still need to hit "Save Cup" after).`))
-    return;
 
   const shuffled = [...eligible];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -640,25 +661,40 @@ function randomiseCupRound1() {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
+  const { tieCount, byeCount, name: roundName } = round1Shape(shuffled.length);
+  const playing = shuffled.slice(0, tieCount * 2);
+  const byePlayers = shuffled.slice(tieCount * 2);
+
+  if (!confirm(`Randomise ${roundName} with ${shuffled.length} eligible players — ${tieCount} tie${tieCount === 1 ? '' : 's'}, ${byeCount} bye${byeCount === 1 ? '' : 's'}? This replaces the current first round (you still need to hit "Save Cup" after).`))
+    return;
+
   const ties = [];
-  for (let i = 0; i < shuffled.length; i += 2) {
+  for (let i = 0; i < playing.length; i += 2) {
     ties.push({
       id: 'tie_' + Date.now().toString(36) + '_' + (i / 2),
-      playerA: shuffled[i].id,
-      playerB: shuffled[i + 1] ? shuffled[i + 1].id : null,
+      playerA: playing[i].id,
+      playerB: playing[i + 1].id,
       replayGameweekIds: []
     });
   }
+  byePlayers.forEach((p, i) => {
+    ties.push({
+      id: 'tie_' + Date.now().toString(36) + '_bye' + i,
+      playerA: p.id,
+      playerB: null,
+      replayGameweekIds: []
+    });
+  });
 
   let round1 = CUP.rounds[0];
   if (!round1) {
-    round1 = { id: 'round_' + Date.now().toString(36), name: 'Round 1', gameweekId: null, ties: [] };
+    round1 = { id: 'round_' + Date.now().toString(36), name: roundName, gameweekId: null, ties: [] };
     CUP.rounds.unshift(round1);
   }
-  round1.name = round1.name || 'Round 1';
+  round1.name = roundName;
   round1.ties = ties;
   renderCupPanel();
-  el('cupStatus').textContent = 'Drawn — review below, then Save Cup.';
+  el('cupStatus').textContent = `Drawn — ${roundName}. Review below, then Save Cup.`;
   el('cupStatus').className = 'save-status ok';
 }
 
