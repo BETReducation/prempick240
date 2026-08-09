@@ -53,8 +53,11 @@ flow as WC26 (email + password, invite code required for new accounts).
         { "id": "gw1-m1", "comp": "PL", "home": "Arsenal", "away": "Chelsea",
           "date": "2026-08-15" }
         // …six of them. comp is "PL", "CH" or "CUP".
-        // `date` is display-only (fixtures can span Fri–Sun); locking is driven
-        // by the gameweek's lockTime, or an optional per-match lockTime.
+        // `date` is display-only (fixtures can span Fri–Sun) and is derived
+        // server-side from `kickoff` (see ukDateOnly() in server.js) — the
+        // admin Fixtures form only has one date/time field, Kick-off (UK).
+        // Locking is driven by the gameweek's lockTime, or an optional
+        // per-match lockTime.
       ]
     }
   ]

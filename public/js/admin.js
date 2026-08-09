@@ -209,7 +209,6 @@ function renderFixtureEditor(gw) {
         <span>Home</span>
         <span></span>
         <span>Away</span>
-        <span>Date</span>
         <span>Kick-off (UK)</span>
       </div>
       ${matches.map((m, i) => `
@@ -220,8 +219,7 @@ function renderFixtureEditor(gw) {
           <input type="text" class="fx-home" data-i="${i}" value="${esc(m.home)}" placeholder="Home team" maxlength="60">
           <span class="fixture-v">v</span>
           <input type="text" class="fx-away" data-i="${i}" value="${esc(m.away)}" placeholder="Away team" maxlength="60">
-          <input type="date" class="fx-date" data-i="${i}" value="${esc(m.date || '')}">
-          <input type="datetime-local" class="fx-kickoff" data-i="${i}" value="${esc(utcISOToUkLocal(m.kickoff))}" title="Kick-off, UK time (optional). The latest kick-off in the week sets when the 'This week' count resets — ~2h after it.">
+          <input type="datetime-local" class="fx-kickoff" data-i="${i}" value="${esc(utcISOToUkLocal(m.kickoff))}" title="Kick-off, UK time. Also sets the fixture's display date, and the latest kick-off in the week sets when the 'This week' count resets — ~2h after it.">
         </div>`).join('')}
     </div>`;
 }
@@ -253,7 +251,8 @@ async function saveGameweek() {
       comp: el('fixtureRows').querySelector(`.fx-comp[data-i="${i}"]`).value,
       home: el('fixtureRows').querySelector(`.fx-home[data-i="${i}"]`).value.trim(),
       away: el('fixtureRows').querySelector(`.fx-away[data-i="${i}"]`).value.trim(),
-      date: el('fixtureRows').querySelector(`.fx-date[data-i="${i}"]`).value || null,
+      // No separate `date` field any more — the server derives the display
+      // date from `kickoff` (UK calendar day). See ukDateOnly() in server.js.
       kickoff: (() => {
         const ko = el('fixtureRows').querySelector(`.fx-kickoff[data-i="${i}"]`).value;
         return ko ? ukLocalToUtcISO(ko) : null;

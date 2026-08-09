@@ -238,6 +238,20 @@ function sanitise(str, maxLen) {
   return str.replace(/[<>]/g, '').trim().slice(0, maxLen);
 }
 
+// A fixture's display `date` is derived from its `kickoff`, not entered
+// separately — this returns the UK calendar day (YYYY-MM-DD) a UTC instant
+// falls on, so a late kick-off near midnight still shows the date fans
+// actually call it, not whatever day UTC happens to be on.
+function ukDateOnly(isoUtc) {
+  const d = new Date(isoUtc);
+  if (isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(d);
+  const get = t => parts.find(p => p.type === t)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
 // ── Password hashing (PBKDF2 via Node built-in crypto) ────────────────────────
 
 function hashStr(value, salt) {
@@ -602,10 +616,13 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
       comp:    sanitise(m.comp || 'PL', 4),
       home:    sanitise(m.home, 60),
       away:    sanitise(m.away, 60),
-      // Preserve `date` and only keep a `kickoff` that was actually supplied.
-      // Defaulting kickoff to the week's lockTime used to overwrite the real
-      // fixture dates on every save.
-      ...(m.date    ? { date:     sanitise(m.date, 10) } : {}),
+      // The admin form only collects `kickoff` — `date` (the fixture's
+      // display date) is derived from it here, so there's one field to
+      // enter, not two. A `date` submitted directly is preserved as-is
+      // (kept for old callers / API scripts), else it's the UK calendar
+      // day of `kickoff`, else dropped.
+      ...(m.date    ? { date:     sanitise(m.date, 10) }
+        : m.kickoff ? { date:     ukDateOnly(m.kickoff) } : {}),
       ...(m.kickoff ? { kickoff:  m.kickoff }            : {}),
       ...(m.lockTime ? { lockTime: m.lockTime } : {})
     };
