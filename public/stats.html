@@ -54,7 +54,11 @@
     <h2 class="section-title">Form Guide</h2>
     <p class="section-desc">Results correct over each player's last 6 played gameweeks.</p>
   </div>
-  <div class="section section--flush section--wide">
+  <!-- Not --wide: at most 8 lean columns (Player + up to 6 weeks + Last 6),
+       unlike the main Ranking table (7 columns with wider content) that
+       needs the full 1100px canvas. table-wrap's own overflow-x handles it
+       if 6 week columns ever do get tight at 760px. -->
+  <div class="section section--flush">
     <div class="table-wrap">
       <table class="ranking-table" id="formGuideTable"></table>
     </div>
