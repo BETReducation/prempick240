@@ -1897,14 +1897,17 @@ footer span {
 /* Two columns, ties alternating left/right in draw order — tie 1 top-left,
    tie 2 top-right, tie 3 second-left, tie 4 second-right, and so on — so the
    bracket stays visually balanced as it grows, rather than filling one long
-   single column. */
+   single column. Fixed (narrow) column width rather than 1fr/1fr — a real
+   bracket's round-1 columns are narrow and tall, not stretched to fill the
+   section, and the unused width in between is exactly where round 2, the
+   semis and the final will eventually sit as more columns are added. */
 .bracket-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 20px;
+  grid-template-columns: repeat(2, 200px);
+  gap: 14px 48px;
   align-items: start;
 }
-.bracket-column { display: flex; flex-direction: column; gap: 10px; }
+.bracket-column { display: flex; flex-direction: column; gap: 14px; }
 .bracket-tie {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1916,7 +1919,7 @@ footer span {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 14px 12px;
   font-size: 13px;
 }
 .bracket-tie-player + .bracket-tie-player { border-top: 1px solid var(--border); }
