@@ -25,7 +25,7 @@ design system, different domain model.
 | `public/member.html` | Player profile (display name, bio, avatar, stats) |
 | `public/admin.html` | **Admin** — publish a week's fixtures, enter results, manage the Cup and International League, download the League Workbook. Linked in the nav for admin accounts only. |
 | `public/reset.html` | Password reset landing page (email token) |
-| `public/cup.html` | **FP Cup** — read-only knockout bracket |
+| `public/cup.html` | **PP Cup** — read-only knockout bracket |
 | `public/international.html` | **International League** — round-robin group tables, qualification standings |
 
 Login is a modal injected by `public/js/auth.js`, present on every page — same
@@ -67,7 +67,7 @@ flow as WC26 (email + password, invite code required for new accounts).
 Runtime state (gitignored, lives on the Railway volume in production):
 `predictions.json`, `results.json`, `access-codes.json`, `sessions.json`,
 `leaderboard-prev.json`, `position-history.json` (one position snapshot per
-completed gameweek, never overwritten), `cup.json` (FP Cup rounds/ties, ids
+completed gameweek, never overwritten), `cup.json` (PP Cup rounds/ties, ids
 only — scores are always derived, never stored), `international-league.json`
 (groups/matchdays, same ids-only shape), `PremPick240-League.xlsx`
 (the generated Excel mirror — see "Excel mirror" below).
@@ -85,7 +85,7 @@ end-of-season awards, which is why it is kept separate rather than added on.
 
 `comp` (`PL`/`CH`/`CUP`/`INTL`) is purely a display tag — `calcLeaderboard()`
 and `calcPraise()` both loop over every match in every gameweek with no
-`comp` filtering at all, by construction. An FA Cup or International
+`comp` filtering at all, by construction. A PP Cup or International
 gameweek's results count toward the main table and weekly jackpot exactly
 like any other week; the Cup/International pages are just a second read of
 the same `resultPoints`, never a separate score. Don't add a `comp` check
@@ -114,8 +114,11 @@ So with 40 players the season pot is 1,600 and a standard week is worth 40.
   season end per `praise.seasonEnd` — 40/25/15 for the top three, 20% for most
   exact scorelines.
 
-A planned FA Cup side competition would take a slice of that 20% — add it as
-another `seasonEnd` entry, no code change.
+A further side-competition prize could still take a slice of that 20% —
+add it as another `seasonEnd` entry, no code change. (This note originally
+proposed the PP Cup itself as that side competition — it's since been
+built as a full knockout feature in its own right, see "Cup" below,
+rather than a season-end prize split.)
 
 **Player count is live.** `totalPot` and `weeklyBase` are derived from the
 current number of registered players, so both move if someone joins mid-season,
@@ -157,7 +160,7 @@ tracking the player count.
   streams the current Excel mirror (see below). `comp` now also accepts
   `"INTL"` for international-fixture gameweeks that feed the International
   League.
-- **Cup** — build the FP Cup knockout bracket: rounds, each assigned a
+- **Cup** — build the PP Cup knockout bracket: rounds, each assigned a
   gameweek, and ties pairing two players (or a bye). A tie needs no fixture of
   its own — its "score" is simply both players' `resultPoints` in the round's
   gameweek (see `calcCup()` in `server.js`). A draw is flagged `needsReplay`;
@@ -179,10 +182,11 @@ tracking the player count.
   4 ties (8 players) play, 12 get a bye, Round 2 = 4 + 12 = 16 exactly.
   This inverts the naive guess (majority plays, minority byes) — that
   version leaves Round 2 unbalanced one round later. When byes outnumber
-  ties, the round is named **"FA Cup Qualifier"** instead of "Round 1" —
+  ties, the round is named **"PP Cup Qualifier"** instead of "Round 1" —
   it's the round where admin publishes the season's first real
-  `CUP`-tagged gameweek, mirroring how the real FA Cup's qualifying
-  rounds thin the field before the "first round proper".
+  `CUP`-tagged gameweek, named after the real FA Cup's qualifying rounds,
+  which thin the field the same way before the "first round proper". The
+  PP Cup itself starts in January.
 - **International** — build the International League: groups of players with
   round-robin matchdays, each mapped to an `INTL`-tagged gameweek. It's a
   pure league — no knockout stage after the groups. Matchday "goals" are the
@@ -198,7 +202,7 @@ needs no password. The password box is a fallback and stores to `sessionStorage`
 `excel.js` renders a generated `.xlsx` workbook (`PremPick240-League.xlsx`, on
 `PERSISTENT_DIR` like the other runtime files) that mirrors everything the
 server already computes: League Table, Form Guide, Manager Of The Week, Week
-Record, raw Predictions, Position History, FP Cup, International League +
+Record, raw Predictions, Position History, PP Cup, International League +
 Qualification. **The server is the calculation engine — this file is a report,
 not a template.** Every cell is a value, not a formula; editing the workbook
 has no effect on the site. This is a deliberate exception to "always use
@@ -320,7 +324,7 @@ submits — this was a real bug, not a hypothetical.
 | POST | `/api/admin/gameweeks` | Admin | Create or update a gameweek |
 | DELETE | `/api/admin/gameweeks/:gwId` | Admin | Delete a gameweek |
 | GET | `/api/position-history` | — | Position per completed gameweek, best/worst, movement |
-| GET | `/api/cup` | — | FP Cup bracket with computed scores/winners |
+| GET | `/api/cup` | — | PP Cup bracket with computed scores/winners |
 | GET/POST | `/api/admin/cup` | Admin | Read/write the raw bracket structure |
 | GET | `/api/international-league` | — | Groups, qualification, all computed |
 | GET/POST | `/api/admin/international-league` | Admin | Read/write the raw groups structure |
@@ -370,7 +374,7 @@ Consequences:
 - `POST /api/admin/gameweeks` rebuilds each match object, so any field it
   doesn't explicitly copy is destroyed on save. It silently wiped every
   fixture's `date` once. If you add a per-match field, add it there too.
-- **The FP Cup and International League store only structure (ids), never
+- **The PP Cup and International League store only structure (ids), never
   scores.** `calcCup()`/`calcInternationalLeague()` always derive scores from
   `calcLeaderboard()`'s `perGameweek` at request time. Don't add a "score"
   field to `cup.json`/`international-league.json` — it would drift from the

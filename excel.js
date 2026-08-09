@@ -111,7 +111,7 @@ function buildReadme(wb) {
     '  Week Record                   Raw grid: results-correct count per player per week',
     '  Predictions                   Every player\'s raw score predictions, written the moment they save',
     '  Position History              League position per player per completed week, plus best/worst',
-    '  FP Cup                        Knockout bracket — ties decided by that week\'s results-correct count',
+    '  PP Cup                        Knockout bracket — ties decided by that week\'s results-correct count',
     '  International League          Round-robin group league, fed by international-tagged gameweeks',
     '  International League Qual.    Current standings, for reference when seeding groups'
   ];
@@ -234,7 +234,7 @@ function buildPositionHistory(wb, positionHistory, gws) {
 }
 
 function buildCup(wb, cup) {
-  const sheet = wb.addWorksheet('FP Cup');
+  const sheet = wb.addWorksheet('PP Cup');
   autoWidth(sheet, [16, 24, 8, 8, 24, 14]);
   const header = sheet.addRow(['Round', 'Player A', 'Score', 'Score', 'Player B', 'Result']);
   styledHeader(header);

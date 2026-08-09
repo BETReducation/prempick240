@@ -1218,7 +1218,7 @@ function calcPositionHistory() {
 
 app.get('/api/position-history', (req, res) => res.json(calcPositionHistory()));
 
-// ── FP Cup ─────────────────────────────────────────────────────────────────────
+// ── PP Cup ─────────────────────────────────────────────────────────────────────
 //
 // A cup tie needs no fixture of its own: the "score" is simply each player's
 // resultPoints in whichever gameweek the tie is assigned to. A draw is
@@ -1255,9 +1255,10 @@ function isCupEligible(user, cutoffIso) {
 // to trim the excess above the largest power of two ≤ N, everyone else
 // gets a bye. (Round 2 total = ties won + byes = target, always exact —
 // see the admin/user discussion this was worked out in.) When byes
-// outnumber ties, admin calls this round "FA Cup Qualifier" instead of
-// "Round 1" — matching how the real FA Cup's qualifying rounds thin the
-// field before the "first round proper".
+// outnumber ties, admin calls this round "PP Cup Qualifier" instead of
+// "Round 1" — named after the real FA Cup's qualifying rounds, which thin
+// the field the same way before the "first round proper". The PP Cup
+// itself starts in January.
 function largestPow2LE(n) {
   let p = 1;
   while (p * 2 <= n) p *= 2;
@@ -1269,7 +1270,7 @@ function round1Shape(n) {
   const excess = n - target;
   const tieCount = excess === 0 ? Math.floor(n / 2) : excess;
   const byeCount = n - tieCount * 2;
-  return { tieCount, byeCount, name: byeCount > tieCount ? 'FA Cup Qualifier' : 'Round 1' };
+  return { tieCount, byeCount, name: byeCount > tieCount ? 'PP Cup Qualifier' : 'Round 1' };
 }
 
 function readCup() { return readJSON(CUP_FILE, { rounds: [] }); }
@@ -1319,7 +1320,7 @@ function calcCup() {
   // Lets the public Cup page draw a placeholder bracket (Player 1 v Player 2,
   // …) sized to however many eligible players there are right now, before
   // admin has drawn — let alone entered — a real Round 1. Shape (tie/bye
-  // counts, and whether it's a normal Round 1 or an FA Cup Qualifier) comes
+  // counts, and whether it's a normal Round 1 or a PP Cup Qualifier) comes
   // from round1Shape() so the preview always matches what Randomise would
   // actually produce.
   const cutoff = cupEligibilityCutoff();

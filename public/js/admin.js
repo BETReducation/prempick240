@@ -640,7 +640,7 @@ function round1Shape(n) {
   const excess = n - target;
   const tieCount = excess === 0 ? Math.floor(n / 2) : excess;
   const byeCount = n - tieCount * 2;
-  return { tieCount, byeCount, name: byeCount > tieCount ? 'FA Cup Qualifier' : 'Round 1' };
+  return { tieCount, byeCount, name: byeCount > tieCount ? 'PP Cup Qualifier' : 'Round 1' };
 }
 
 // Shuffles every eligible player (see cupEligibilityCutoff() in server.js —
