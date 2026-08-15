@@ -11,6 +11,10 @@ let EDITING    = false;  // true = inputs live; false = picks shown as saved tex
 
 const COMP_LABEL = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup tie' };
 
+// Vietnam has no DST (fixed UTC+7), so this is just a second render of the
+// same instant — no wall-clock reconciliation needed like the UK side.
+const VN_TZ = 'Asia/Ho_Chi_Minh';
+
 // Fixtures in a week can span several days, so each row shows its own date.
 function fmtMatchDate(m) {
   const iso = m.date || m.kickoff;
@@ -19,7 +23,10 @@ function fmtMatchDate(m) {
   const opts = { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London' };
   // Only show a time when we actually know one.
   if (!m.date && m.kickoff) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
-  return d.toLocaleString('en-GB', opts);
+  const uk = d.toLocaleString('en-GB', opts);
+  if (!opts.hour) return uk;   // date-only, no time to convert
+  const vn = d.toLocaleString('en-GB', { ...opts, timeZone: VN_TZ });
+  return `${uk} UK / ${vn} VN`;
 }
 
 // Players see fixtures in kick-off order regardless of how admin entered
@@ -37,20 +44,25 @@ function el(id) { return document.getElementById(id); }
 
 function fmtLock(iso) {
   if (!iso) return 'No deadline set';
-  return new Date(iso).toLocaleString('en-GB', {
+  const opts = {
     weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: 'Europe/London'   // it's a UK league — show UK time to everyone
-  });
+    hour: '2-digit', minute: '2-digit'
+  };
+  const uk = new Date(iso).toLocaleString('en-GB', { ...opts, timeZone: 'Europe/London' });
+  const vn = new Date(iso).toLocaleString('en-GB', { ...opts, timeZone: VN_TZ });
+  return `${uk} UK / ${vn} VN`;
 }
 
 function fmtLockShort(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('en-GB', {
+  const full = {
     weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: 'Europe/London'
-  }).replace(',', '');
+    hour: '2-digit', minute: '2-digit'
+  };
+  const uk = new Date(iso).toLocaleString('en-GB', { ...full, timeZone: 'Europe/London' }).replace(',', '');
+  // Mobile is space-constrained — VN side drops the date, just the time.
+  const vn = new Date(iso).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: VN_TZ });
+  return `${uk} UK / ${vn} VN`;
 }
 
 function countdown(iso) {

@@ -71,12 +71,17 @@ function utcISOToUkLocal(iso) {
   return new Date(ms).toISOString().slice(0, 16);
 }
 
+const VN_TZ = 'Asia/Ho_Chi_Minh';   // fixed UTC+7, no DST
+
 function fmtUk(iso) {
   if (!iso) return 'no deadline';
-  return new Date(iso).toLocaleString('en-GB', {
+  const opts = {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London'
-  });
+    hour: '2-digit', minute: '2-digit'
+  };
+  const uk = new Date(iso).toLocaleString('en-GB', { ...opts, timeZone: 'Europe/London' });
+  const vn = new Date(iso).toLocaleString('en-GB', { ...opts, timeZone: VN_TZ });
+  return `${uk} UK / ${vn} VN`;
 }
 
 // ── Results panel ─────────────────────────────────────────────────────────────
