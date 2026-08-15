@@ -16,17 +16,13 @@ const COMP_LABEL = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup tie' };
 const VN_TZ = 'Asia/Ho_Chi_Minh';
 
 // Fixtures in a week can span several days, so each row shows its own date.
+// Date only — no kick-off time shown here, that's reserved for the deadline.
 function fmtMatchDate(m) {
   const iso = m.date || m.kickoff;
   if (!iso) return '';
   const d = new Date(m.date ? m.date + 'T12:00:00Z' : m.kickoff);
   const opts = { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London' };
-  // Only show a time when we actually know one.
-  if (!m.date && m.kickoff) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
-  const uk = d.toLocaleString('en-GB', opts);
-  if (!opts.hour) return uk;   // date-only, no time to convert
-  const vn = d.toLocaleString('en-GB', { ...opts, timeZone: VN_TZ });
-  return `${uk} UK / ${vn} VN`;
+  return d.toLocaleString('en-GB', opts);
 }
 
 // Players see fixtures in kick-off order regardless of how admin entered
