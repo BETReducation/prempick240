@@ -37,42 +37,48 @@
           "comp": "PL",
           "home": "Arsenal",
           "away": "Coventry",
-          "date": "2026-08-21"
+          "date": "2026-08-21",
+          "kickoff": "2026-08-21T19:00:00Z"
         },
         {
           "id": "gw1-m2",
           "comp": "PL",
           "home": "Ipswich",
           "away": "Sunderland",
-          "date": "2026-08-22"
+          "date": "2026-08-22",
+          "kickoff": "2026-08-22T14:00:00Z"
         },
         {
           "id": "gw1-m3",
           "comp": "PL",
           "home": "Everton",
           "away": "Crystal Palace",
-          "date": "2026-08-22"
+          "date": "2026-08-22",
+          "kickoff": "2026-08-22T14:00:00Z"
         },
         {
           "id": "gw1-m4",
           "comp": "PL",
           "home": "Nottingham Forest",
           "away": "Leeds",
-          "date": "2026-08-22"
+          "date": "2026-08-22",
+          "kickoff": "2026-08-22T14:00:00Z"
         },
         {
           "id": "gw1-m5",
           "comp": "PL",
           "home": "Brighton",
           "away": "Aston Villa",
-          "date": "2026-08-23"
+          "date": "2026-08-23",
+          "kickoff": "2026-08-23T13:00:00Z"
         },
         {
           "id": "gw1-m6",
           "comp": "PL",
           "home": "Newcastle",
           "away": "Liverpool",
-          "date": "2026-08-23"
+          "date": "2026-08-23",
+          "kickoff": "2026-08-23T15:30:00Z"
         }
       ]
     }
