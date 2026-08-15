@@ -144,26 +144,29 @@ function renderFixtures(gw) {
       ${sortedMatches(gw).map((m, i) => {
         const pred = MY_PREDS[m.id] || {};
         return `
-        <div class="fixture-row">
-          ${m.comp && m.comp !== 'PL'
-            ? `<span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>`
-            : '<span class="fixture-comp-none"></span>'}
-          <span class="fixture-team home">${m.home}</span>
-          <div class="fixture-scores">
-            ${editable ? `
-              <input type="number" class="score-input" data-match="${m.id}" data-side="home"
-                     min="0" max="99" inputmode="numeric" value="${pred.home ?? ''}">
-              <span class="fixture-v">v</span>
-              <input type="number" class="score-input" data-match="${m.id}" data-side="away"
-                     min="0" max="99" inputmode="numeric" value="${pred.away ?? ''}">
-            ` : `
-              <span class="fixture-mypick${pred.home == null ? ' none' : ''}">${
-                pred.home == null ? '—' : `${pred.home}–${pred.away}`
-              }</span>
-            `}
+        <div class="fixture-card">
+          <div class="fixture-row${gw.locked ? ' fixture-row--toggle' : ''}" data-match="${m.id}">
+            ${m.comp && m.comp !== 'PL'
+              ? `<span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>`
+              : '<span class="fixture-comp-none"></span>'}
+            <span class="fixture-team home">${m.home}</span>
+            <div class="fixture-scores">
+              ${editable ? `
+                <input type="number" class="score-input" data-match="${m.id}" data-side="home"
+                       min="0" max="99" inputmode="numeric" value="${pred.home ?? ''}">
+                <span class="fixture-v">v</span>
+                <input type="number" class="score-input" data-match="${m.id}" data-side="away"
+                       min="0" max="99" inputmode="numeric" value="${pred.away ?? ''}">
+              ` : `
+                <span class="fixture-mypick${pred.home == null ? ' none' : ''}">${
+                  pred.home == null ? '—' : `${pred.home}–${pred.away}`
+                }</span>
+              `}
+            </div>
+            <span class="fixture-team away">${m.away}</span>
+            <span class="fixture-date">${fmtMatchDate(m)}${gw.locked ? '<span class="fixture-chevron">▾</span>' : ''}</span>
           </div>
-          <span class="fixture-team away">${m.away}</span>
-          <span class="fixture-date">${fmtMatchDate(m)}</span>
+          ${gw.locked ? `<div class="fixture-preds" id="preds-${m.id}" hidden>${renderMatchPreds(m, userId)}</div>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -179,92 +182,49 @@ function renderFixtures(gw) {
     });
   });
 
+  el('fixtureList').querySelectorAll('.fixture-row--toggle').forEach(row => {
+    row.addEventListener('click', () => {
+      const panel = el(`preds-${row.dataset.match}`);
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      row.classList.toggle('open', !panel.hidden);
+    });
+  });
+
   renderSaveBar(gw);
-  renderEveryonesPredictions(gw);
 }
 
-// Once a week locks, everyone's picks become public — that's half the fun.
-// Before the lock the server withholds them, so there's nothing to show.
-function renderEveryonesPredictions(gw) {
-  const box = el('allPreds');
-  if (!box) return;
-
-  if (!gw.locked) {
-    box.innerHTML = '';
-    return;
-  }
-
-  const matches = sortedMatches(gw);
-
-  // Only players who actually entered something for this week.
+// Once a week locks, everyone's picks for a single fixture become public —
+// that's half the fun. Rendered into the collapsible panel under each card;
+// before the lock the server withholds picks, so callers never get here.
+function renderMatchPreds(m, userId) {
+  const r = RESULTS[m.id];
   const rows = ALL_PREDS
-    .map(p => ({ ...p, picks: matches.map(m => p.predictions[m.id]) }))
-    .filter(p => p.picks.some(Boolean));
+    .map(p => ({ ...p, pick: p.predictions[m.id] }))
+    .filter(p => p.pick);
 
-  if (!rows.length) {
-    box.innerHTML = '<p class="empty wide-empty">Nobody entered predictions for this week.</p>';
-    return;
-  }
+  if (!rows.length) return '<p class="empty fixture-preds-empty">Nobody predicted this one.</p>';
 
-  const { userId } = Session.load();
-
-  // Rank by results called right, so the table doubles as the week's scoreboard.
   rows.forEach(p => {
-    p.correct = matches.reduce((n, m, i) => {
-      const r = RESULTS[m.id], pr = p.picks[i];
-      if (!r || !r.played || !pr) return n;
-      return n + (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away) ? 1 : 0);
-    }, 0);
-    p.exact = matches.reduce((n, m, i) => {
-      const r = RESULTS[m.id], pr = p.picks[i];
-      if (!r || !r.played || !pr) return n;
-      return n + (pr.home === r.home && pr.away === r.away ? 1 : 0);
-    }, 0);
+    let cls = '';
+    if (r && r.played) {
+      const right = Math.sign(r.home - r.away) === Math.sign(p.pick.home - p.pick.away);
+      const exact = p.pick.home === r.home && p.pick.away === r.away;
+      cls = exact ? 'exact' : (right ? 'hit' : 'miss');
+    }
+    p.cls = cls;
   });
-  rows.sort((a, b) => b.correct - a.correct || b.exact - a.exact || a.name.localeCompare(b.name));
+  // Called-it-right players first, so a glance at the top of the list shows who nailed it.
+  const order = { exact: 0, hit: 1, '': 2, miss: 2 };
+  rows.sort((a, b) => (order[a.cls] - order[b.cls]) || a.name.localeCompare(b.name));
 
-  const anyResults = matches.some(m => RESULTS[m.id]?.played);
-
-  box.innerHTML = `
-    <h3 class="subsection-title">Everyone's predictions</h3>
-    <div class="table-wrap">
-      <table class="preds-table">
-        <thead>
-          <tr>
-            <th class="col-player">Player</th>
-            ${matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
-            ${anyResults ? '<th class="col-pts">Results</th><th class="col-pts">Exact</th>' : ''}
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(p => `
-            <tr class="${p.id === userId ? 'is-me' : ''}">
-              <td class="col-player">${esc(p.displayName || p.name)}</td>
-              ${matches.map((m, i) => {
-                const pr = p.picks[i], r = RESULTS[m.id];
-                if (!pr) return '<td class="col-fx muted">—</td>';
-                let cls = '';
-                if (r && r.played) {
-                  const right = Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away);
-                  const exact = pr.home === r.home && pr.away === r.away;
-                  cls = exact ? ' exact' : (right ? ' hit' : ' miss');
-                }
-                return `<td class="col-fx${cls}">${pr.home}–${pr.away}</td>`;
-              }).join('')}
-              ${anyResults ? `<td class="col-pts strong">${p.correct}</td><td class="col-pts">${p.exact}</td>` : ''}
-            </tr>`).join('')}
-          ${anyResults ? `
-            <tr class="actual-row">
-              <td class="col-player">Actual</td>
-              ${matches.map(m => {
-                const r = RESULTS[m.id];
-                return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
-              }).join('')}
-              <td class="col-pts"></td><td class="col-pts"></td>
-            </tr>` : ''}
-        </tbody>
-      </table>
-    </div>`;
+  return `
+    ${r && r.played ? `<div class="fixture-pred-row fixture-pred-actual"><span>Actual</span><span>${r.home}–${r.away}</span></div>` : ''}
+    ${rows.map(p => `
+      <div class="fixture-pred-row${p.cls ? ' ' + p.cls : ''}${p.id === userId ? ' is-me' : ''}">
+        <span>${esc(p.displayName || p.name)}</span>
+        <span>${p.pick.home}–${p.pick.away}</span>
+      </div>`).join('')}`;
 }
 
 function esc(s) {
