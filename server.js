@@ -1061,6 +1061,27 @@ function calcLeaderboard() {
 
 app.get('/api/leaderboard', (req, res) => res.json(calcLeaderboard()));
 
+// Week Record — player × gameweek grid of results-correct counts. Same data
+// excel.js's "Week Record" sheet used to show; now served live instead.
+app.get('/api/week-record', (req, res) => {
+  const board = calcLeaderboard();
+  const weeks = (readGameweeks().gameweeks || [])
+    .filter(g => g.complete)
+    .sort((a, b) => a.number - b.number)
+    .map(g => ({ id: g.id, number: g.number, label: g.label }));
+
+  const rows = board.map(p => ({
+    name: p.name,
+    displayName: p.displayName || p.name,
+    weeks: weeks.map(w => {
+      const gwStats = p.perGameweek[w.id];
+      return gwStats && gwStats.played > 0 ? gwStats.resultPoints : null;
+    })
+  }));
+
+  res.json({ weeks, rows });
+});
+
 // ── Praise ─────────────────────────────────────────────────────────────────────
 //
 // Praise is a finite pot expressed in percent. Each completed gameweek puts its
@@ -1364,6 +1385,19 @@ function calcInternationalLeague() {
   const results = readJSON(RESULTS_FILE,     { results: {} }).results || {};
   const gws     = readGameweeks();
 
+  // Which gameweeks fed the table — just enough to show players when each
+  // batch of INTL fixtures counted, since the table itself has no dates.
+  const fixtureWeeks = [];
+  for (const gw of gws.gameweeks || []) {
+    const intlMatches = (gw.matches || []).filter(m => m.comp === 'INTL');
+    if (!intlMatches.length) continue;
+    fixtureWeeks.push({
+      id: gw.id, number: gw.number, label: gw.label,
+      dates: [...new Set(intlMatches.map(m => m.date).filter(Boolean))].sort()
+    });
+  }
+  fixtureWeeks.sort((a, b) => a.number - b.number);
+
   const table = users.map(user => {
     const preds = user.predictions || {};
     let resultPoints = 0, scorePoints = 0, played = 0;
@@ -1389,7 +1423,7 @@ function calcInternationalLeague() {
     b.resultPoints - a.resultPoints || b.scorePoints - a.scorePoints || a.name.localeCompare(b.name)
   );
 
-  return { table };
+  return { table, fixtureWeeks };
 }
 
 app.get('/api/international-league', (req, res) => res.json(calcInternationalLeague()));

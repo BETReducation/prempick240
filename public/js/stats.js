@@ -140,15 +140,37 @@ function renderPraise(praise, board) {
     </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 }
 
+// Week Record: results-correct count per player per completed gameweek, for
+// the whole season — the site's replacement for the old workbook's "Week
+// Record" sheet. /api/week-record already returns players in rank order.
+function renderWeekRecord(record) {
+  const { weeks, rows } = record;
+  el('weekRecordTable').innerHTML = `
+    <thead>
+      <tr>
+        <th class="col-player">Player</th>
+        ${weeks.map(w => `<th class="col-num">Wk ${w.number}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.length ? rows.map(r => `
+        <tr>
+          <td class="col-player">${esc(r.displayName || r.name)}</td>
+          ${r.weeks.map(v => `<td class="col-num muted">${v ?? '—'}</td>`).join('')}
+        </tr>`).join('') : `<tr><td colspan="${weeks.length + 1}" class="empty">No completed gameweeks yet.</td></tr>`}
+    </tbody>`;
+}
+
 async function init() {
   try {
-    const [board, gws, praise] = await Promise.all([
-      API.leaderboard(), API.gameweeks(), API.praise()
+    const [board, gws, praise, weekRecord] = await Promise.all([
+      API.leaderboard(), API.gameweeks(), API.praise(), API.weekRecord()
     ]);
 
     renderFormGuide(board, gws);
     renderMotw(board, gws);
     renderPraise(praise, board);
+    renderWeekRecord(weekRecord);
 
     el('loadingState').style.display = 'none';
     el('statsApp').style.display     = '';

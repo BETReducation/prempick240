@@ -67,6 +67,7 @@ const API = {
   // Results & leaderboard
   results:     () => API.get('/api/results'),
   leaderboard: () => API.get('/api/leaderboard'),
+  weekRecord: () => API.get('/api/week-record'),
   praise:      () => API.get('/api/praise'),
   positionHistory: () => API.get('/api/position-history'),
 
