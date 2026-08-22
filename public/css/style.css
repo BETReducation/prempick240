@@ -2037,7 +2037,7 @@ footer span {
   .fixture-row {
     grid-template-columns: auto 1fr auto 1fr;
     grid-template-areas:
-      "time comp date date"
+      ".    comp date date"
       "time home score away";
     gap: 8px;
   }
