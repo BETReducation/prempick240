@@ -69,7 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // and the mobile drawer. The drawer was previously missed, so admins had
     // no way to reach the admin page on a phone.
     API.me().then(me => {
-      if (!me || !me.isAdmin) return;
+      if (!me || !me.userId) {
+        // Server doesn't recognise our session token (expired, or
+        // invalidated by a password reset / admin action elsewhere) even
+        // though this browser still has a cached userId/name. Without this,
+        // the nav keeps showing "logged in" — just silently missing Admin —
+        // until the user manually logs out and back in. Clear the stale
+        // state instead so it falls back to a real logged-out view.
+        Session.clear();
+        location.reload();
+        return;
+      }
+      if (!me.isAdmin) return;
       const onAdmin = location.pathname.endsWith('admin.html');
 
       if (!document.getElementById('navAdminLink')) {

@@ -44,9 +44,13 @@ const API = {
   me() {
     const { token } = Session.load();
     if (!token) return Promise.resolve({ userId: null, isAdmin: false });
+    // Deliberately doesn't catch fetch/parse errors into a fake
+    // {userId:null} reply — auth.js treats a real {userId:null} response as
+    // "server rejected our session" and clears the stale login state. A
+    // network hiccup isn't that, and shouldn't log the user out; it should
+    // just leave things as they are, which is what letting it reject does.
     return fetch('/api/me', { headers: { 'x-session-token': token } })
-      .then(r => r.json())
-      .catch(() => ({ userId: null, isAdmin: false }));
+      .then(r => r.json());
   },
 
   // Gameweeks & lock
