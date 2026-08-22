@@ -25,6 +25,16 @@ function fmtMatchDate(m) {
   return d.toLocaleString('en-GB', opts);
 }
 
+// UK wall-clock kick-off time, shown on the left of the fixture card.
+// Only exact kick-offs have a time to show — a placeholder week with just a
+// date carries no `kickoff`, so this stays blank rather than guessing.
+function fmtKickoffTime(m) {
+  if (!m.kickoff) return '';
+  return new Date(m.kickoff).toLocaleString('en-GB', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London'
+  });
+}
+
 // Players see fixtures in kick-off order regardless of how admin entered
 // them. This is display-only — a sorted copy, never the stored array — so
 // it can't disturb the id <-> position relationship the admin Fixtures
@@ -146,6 +156,7 @@ function renderFixtures(gw) {
         return `
         <div class="fixture-card">
           <div class="fixture-row${gw.locked ? ' fixture-row--toggle' : ''}" data-match="${m.id}">
+            <span class="fixture-kickoff">${fmtKickoffTime(m)}</span>
             ${m.comp && m.comp !== 'PL'
               ? `<span class="fixture-comp comp-${m.comp.toLowerCase()}" title="${COMP_LABEL[m.comp] || m.comp}">${m.comp}</span>`
               : '<span class="fixture-comp-none"></span>'}
