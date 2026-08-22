@@ -17,6 +17,8 @@
   --gold-dim:   rgba(240,197,0,0.12);
   --red:        #f07a5a;
   --teal:       #4dd9c0;
+  --blue:       #5b9bf0;
+  --blue-dim:   rgba(91,155,240,0.14);
   --shadow:     0 4px 24px rgba(0,0,0,0.4);
 }
 
@@ -35,6 +37,8 @@
   --gold-dim:   rgba(201,168,0,0.10);
   --red:        #e05a3a;
   --teal:       #0aab8a;
+  --blue:       #2f6fd1;
+  --blue-dim:   rgba(47,111,209,0.10);
   --shadow:     0 4px 24px rgba(0,0,0,0.10);
 }
 
@@ -1744,10 +1748,23 @@ footer span {
   padding: 4px 6px;
   border-radius: var(--radius-sm);
 }
-.fixture-pred-row.is-me   { background: var(--accent-dim); font-weight: 600; }
+/* Blue, not green — green already means "called it right" on this row,
+   so a green "is-me" background read as a correct pick even when it wasn't. */
+.fixture-pred-row.is-me   { background: var(--blue-dim); font-weight: 600; }
 .fixture-pred-row.exact   { color: var(--accent); font-weight: 700; background: var(--accent-dim); }
 .fixture-pred-row.hit     { color: var(--accent); }
 .fixture-pred-row.miss    { color: var(--muted); }
+
+.jackpot-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.jackpot-dot.in  { background: var(--accent); }
+.jackpot-dot.out { background: var(--red); }
 .fixture-pred-actual {
   font-weight: 700;
   border-bottom: 1px solid var(--border2);

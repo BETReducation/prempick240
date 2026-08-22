@@ -177,7 +177,7 @@ function renderFixtures(gw) {
             <span class="fixture-team away">${m.away}</span>
             <span class="fixture-date">${fmtMatchDate(m)}${fmtKickoffTime(m) ? `<span class="fixture-date-time">, ${fmtKickoffTime(m)}</span>` : ''}${gw.locked ? '<span class="fixture-chevron">▾</span>' : ''}</span>
           </div>
-          ${gw.locked ? `<div class="fixture-preds" id="preds-${m.id}" hidden>${renderMatchPreds(m, userId)}</div>` : ''}
+          ${gw.locked ? `<div class="fixture-preds" id="preds-${m.id}" hidden>${renderMatchPreds(m, userId, gw)}</div>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -205,16 +205,36 @@ function renderFixtures(gw) {
   renderSaveBar(gw);
 }
 
+// Still in for this week's jackpot? Praise is only won by calling all six
+// results right, so as soon as one result in the gameweek is known, anyone
+// who missed it (or never predicted it) is out — regardless of which
+// fixture card you're looking at. Nothing to show until a result exists.
+function contentionMap(gw) {
+  const decided = gw.matches.filter(mm => RESULTS[mm.id] && RESULTS[mm.id].played);
+  if (!decided.length) return null;
+  const map = {};
+  ALL_PREDS.forEach(p => {
+    map[p.id] = decided.every(mm => {
+      const pick = p.predictions[mm.id];
+      const r = RESULTS[mm.id];
+      return pick && Math.sign(r.home - r.away) === Math.sign(pick.home - pick.away);
+    });
+  });
+  return map;
+}
+
 // Once a week locks, everyone's picks for a single fixture become public —
 // that's half the fun. Rendered into the collapsible panel under each card;
 // before the lock the server withholds picks, so callers never get here.
-function renderMatchPreds(m, userId) {
+function renderMatchPreds(m, userId, gw) {
   const r = RESULTS[m.id];
   const rows = ALL_PREDS
     .map(p => ({ ...p, pick: p.predictions[m.id] }))
     .filter(p => p.pick);
 
   if (!rows.length) return '<p class="empty fixture-preds-empty">Nobody predicted this one.</p>';
+
+  const contention = contentionMap(gw);
 
   rows.forEach(p => {
     let cls = '';
@@ -233,7 +253,7 @@ function renderMatchPreds(m, userId) {
     ${r && r.played ? `<div class="fixture-pred-row fixture-pred-actual"><span>Actual</span><span>${r.home}–${r.away}</span></div>` : ''}
     ${rows.map(p => `
       <div class="fixture-pred-row${p.cls ? ' ' + p.cls : ''}${p.id === userId ? ' is-me' : ''}">
-        <span>${esc(p.displayName || p.name)}</span>
+        <span>${contention ? `<span class="jackpot-dot ${contention[p.id] ? 'in' : 'out'}" title="${contention[p.id] ? 'Still in for the jackpot' : 'Out of the jackpot'}"></span>` : ''}${esc(p.displayName || p.name)}</span>
         <span>${p.pick.home}–${p.pick.away}</span>
       </div>`).join('')}`;
 }
