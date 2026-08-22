@@ -175,7 +175,7 @@ function renderFixtures(gw) {
               `}
             </div>
             <span class="fixture-team away">${m.away}</span>
-            <span class="fixture-date">${fmtMatchDate(m)}${gw.locked ? '<span class="fixture-chevron">▾</span>' : ''}</span>
+            <span class="fixture-date">${fmtMatchDate(m)}${fmtKickoffTime(m) ? `<span class="fixture-date-time">, ${fmtKickoffTime(m)}</span>` : ''}${gw.locked ? '<span class="fixture-chevron">▾</span>' : ''}</span>
           </div>
           ${gw.locked ? `<div class="fixture-preds" id="preds-${m.id}" hidden>${renderMatchPreds(m, userId)}</div>` : ''}
         </div>`;
