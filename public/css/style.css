@@ -1861,6 +1861,11 @@ footer span {
 }
 .stats-table .col-player { width: 128px; }
 .stats-table .col-num, .stats-table .col-pts { width: 60px; }
+/* Plain two-column tables (e.g. International's "weeks counted" list) carry
+   none of the col-* classes above — give the first column a sane cap so it
+   doesn't swallow the whole row the same way. */
+.stats-table th:first-child:not(.col-pos):not(.col-player),
+.stats-table td:first-child:not(.col-pos):not(.col-player) { width: 140px; }
 
 /* Movement arrows keep the original workbook's inverted convention: moving
    up the table (fewer = better) reads red, moving down reads blue/teal. */
