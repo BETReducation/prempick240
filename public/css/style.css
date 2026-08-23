@@ -1832,6 +1832,19 @@ footer span {
 .ranking-table .muted { color: var(--muted); }
 .ranking-table .empty { text-align: center; color: var(--muted); padding: 2rem; }
 
+/* Form Guide / Week Record — many narrow "Wk N" columns plus one player
+   column. Without a fixed layout the unconstrained player column soaks up
+   whatever the 560px min-width leaves over, which on a phone is nearly the
+   whole table: giant player names and every week column scrolled off. Fixed
+   widths keep the player column sane and let at least one week column show
+   alongside it on load, with the rest reachable via table-wrap's scroll. */
+.stats-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.stats-table .col-player { width: 128px; }
+.stats-table .col-num, .stats-table .col-pts { width: 60px; }
+
 /* Movement arrows keep the original workbook's inverted convention: moving
    up the table (fewer = better) reads red, moving down reads blue/teal. */
 .move-up   { color: var(--red);  font-weight: 700; font-size: 12px; white-space: nowrap; }

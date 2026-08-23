@@ -1065,8 +1065,9 @@ app.get('/api/leaderboard', (req, res) => res.json(calcLeaderboard()));
 // excel.js's "Week Record" sheet used to show; now served live instead.
 app.get('/api/week-record', (req, res) => {
   const board = calcLeaderboard();
+  const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
   const weeks = (readGameweeks().gameweeks || [])
-    .filter(g => g.complete)
+    .filter(g => gameweekComplete(g, results))
     .sort((a, b) => a.number - b.number)
     .map(g => ({ id: g.id, number: g.number, label: g.label }));
 
