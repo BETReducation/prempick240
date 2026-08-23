@@ -558,9 +558,15 @@ function renderSeasonOverview() {
       ${rowLabels.map((label, r) => `
         <tr>
           <th>${label}</th>
-          ${cols.map(c => `<td>${c[r]}</td>`).join('')}
+          ${cols.map((c, i) => `<td data-gw="${esc(gws[i].id)}">${c[r]}</td>`).join('')}
         </tr>`).join('')}
     </tbody>`;
+
+  // Scroll so the currently-active gameweek is the left-most column on
+  // load, rather than whichever end the table happens to render at.
+  const wrap = el('seasonOverviewTable').closest('.table-scroll');
+  const target = el('seasonOverviewTable').querySelector(`td[data-gw="${GWS.currentGameweekId}"]`);
+  if (wrap && target) wrap.scrollLeft = target.offsetLeft - target.parentElement.querySelector('th').offsetWidth;
 }
 
 // ── Cup ──────────────────────────────────────────────────────────────────────
