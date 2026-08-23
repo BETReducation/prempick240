@@ -44,6 +44,15 @@
 
 html { scroll-behavior: smooth; }
 
+/* The nav-drawer sits off-canvas via `position: fixed; right: 0` plus a
+   translateX(100%) rather than being removed from layout — some browsers
+   (notably Safari) still count that off-screen box toward the page's
+   scrollable width, so the whole site gained a phantom horizontal scroll
+   that revealed a sliver of the drawer (its green/gold link colours) down
+   the right edge. Clipping horizontal overflow at the root is the standard
+   fix and doesn't affect any in-flow layout. */
+html, body { overflow-x: hidden; }
+
 body {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   background: var(--bg);
