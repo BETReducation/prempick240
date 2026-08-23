@@ -2452,6 +2452,29 @@ input.score-input:disabled { opacity: 0.5; }
   }
   .gw-strip .lock-notice i { display: none; }
 
+  /* A locked week's notice is a full sentence, not the terse countdown text
+     the row layout above was built for — sharing the row with the tabs
+     squeezed it into an overlap with the active gameweek tab. Stack instead:
+     the notice spans the full width above, tabs get their own full-width
+     row below. */
+  .gw-strip:has(.lock-notice.locked) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gw-strip .lock-notice.locked {
+    order: -1;
+    flex: 0 0 auto;
+    width: 100%;
+    justify-content: flex-start;
+    background: var(--gold-dim);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: left;
+    white-space: normal;
+  }
+  .gw-strip .lock-notice.locked i { display: inline; }
+
   /* Bigger targets — on a phone these boxes are the whole point of the page. */
   input.score-input {
     width: 62px;
