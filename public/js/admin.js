@@ -508,6 +508,59 @@ async function refresh() {
   loadGwForEdit(el('editGw').value);
   renderRecords();
   renderCupPanel();
+  renderSeasonOverview();
+}
+
+// ── Season overview ──────────────────────────────────────────────────────────
+// One fixed heading column, then one column per gameweek — a flattened,
+// spreadsheet-style read of what's already in GWS/RESULTS/ALL_PREDS rather
+// than a new data source.
+
+// Manager of the week for one gameweek: most results called right, ties
+// shared. Mirrors stats.js's renderMotw but works off raw predictions/results
+// since the admin page doesn't fetch the leaderboard.
+function motwForGw(gw) {
+  const decided = gw.matches.filter(m => RESULTS[m.id]?.played);
+  if (!decided.length) return null;
+  const scores = ALL_PREDS.map(p => {
+    const correct = decided.reduce((n, m) => {
+      const pick = p.predictions[m.id];
+      const r = RESULTS[m.id];
+      return n + (pick && Math.sign(r.home - r.away) === Math.sign(pick.home - pick.away) ? 1 : 0);
+    }, 0);
+    return { p, correct };
+  });
+  const max = Math.max(...scores.map(s => s.correct), 0);
+  if (max <= 0) return null;
+  const winners = scores.filter(s => s.correct === max).map(s => s.p.displayName || s.p.name);
+  return { winners, max };
+}
+
+function renderSeasonOverview() {
+  const gws = GWS.gameweeks.slice().sort((a, b) => a.number - b.number);
+  const rowLabels = ['Week', 'Fixture 1', 'Fixture 2', 'Fixture 3', 'Fixture 4', 'Fixture 5', 'Fixture 6', 'Manager of the week'];
+
+  const cols = gws.map(gw => {
+    const six = gw.matches.slice(0, 6);
+    const fixtureCells = Array.from({ length: 6 }, (_, i) => {
+      const m = six[i];
+      return m ? `${esc(m.home)} v ${esc(m.away)}` : '';
+    });
+    const motw = motwForGw(gw);
+    const motwCell = motw
+      ? `${esc(motw.winners.join(', '))} (${motw.max}/6)`
+      : (gw.complete ? '—' : '');
+    return [esc(gw.label || `Week ${gw.number}`), ...fixtureCells, motwCell];
+  });
+
+  el('seasonOverviewTable').innerHTML = `
+    <tbody>
+      ${rowLabels.map((label, r) => `
+        <tr>
+          <th>${label}</th>
+          ${cols.map(c => `<td>${c[r]}</td>`).join('')}
+        </tr>`).join('')}
+    </tbody>`;
 }
 
 // ── Cup ──────────────────────────────────────────────────────────────────────

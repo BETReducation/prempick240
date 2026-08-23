@@ -2107,6 +2107,28 @@ footer span {
 
 .admin-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.25rem; }
 
+/* Season overview — transposed spreadsheet: fixed heading column, one
+   column per gameweek. Wide by construction, so it scrolls its own axis
+   rather than the page. */
+.table-scroll { overflow-x: auto; margin-bottom: 1.25rem; }
+.admin-overview-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.admin-overview-table th, .admin-overview-table td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.admin-overview-table th {
+  background: var(--surface2);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+}
+.admin-overview-table td { background: var(--surface); }
+
 .admin-row {
   display: grid;
   grid-template-columns: 46px minmax(0,1fr) 52px auto 52px minmax(0,1fr) 74px 58px;
