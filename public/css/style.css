@@ -2457,14 +2457,19 @@ input.score-input:disabled { opacity: 0.5; }
   }
   .gw-strip .lock-notice i { display: none; }
 
-  /* A locked week's notice is a full sentence, not the terse countdown text
-     the row layout above was built for — sharing the row with the tabs
-     squeezed it into an overlap with the active gameweek tab. Stack instead:
-     the notice spans the full width above, tabs get their own full-width
-     row below. */
-  .gw-strip:has(.lock-notice.locked) {
+  /* A locked (or "sign in to enter"/deadline) notice is a full sentence, not
+     the terse countdown text the row layout above was built for — sharing
+     the row with the tabs squeezed the active gameweek's own tab out of
+     view entirely (clipped by the tab-bar's scroll, not just visually
+     crowded). Stack instead: the notice spans the full width above, tabs
+     get their own full-width row below. */
+  .gw-strip:has(.lock-notice) {
     flex-direction: column;
     align-items: stretch;
+  }
+  .gw-strip .lock-notice {
+    width: 100%;
+    text-align: left;
   }
   .gw-strip .lock-notice.locked {
     order: -1;
