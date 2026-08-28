@@ -1094,15 +1094,26 @@ function calcPraise() {
   const gws     = readGameweeks();
   const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
   const board   = calcLeaderboard();
+  const users   = readJSON(PREDICTIONS_FILE, { users: [] }).users;
 
   // Praise is denominated in points, not percent. The season pot is one point
   // per registered player per week, so a single week is worth exactly the
-  // number of players. Both figures move if someone joins mid-season — see
-  // CLAUDE.md, this is deliberate.
+  // number of players. The *current* week's value and the season total move
+  // live as people join — see CLAUDE.md, this is deliberate. But a week that
+  // has already happened is worth the number of players who were actually
+  // registered for it, not today's headcount — otherwise a week played
+  // before a new player joined gets inflated retroactively. We use each
+  // gameweek's lockTime as the cutoff, same idea as cupEligibilityCutoff().
   const seasonWeeks  = Number(gws.praise?.seasonWeeks ?? 40);
   const playerCount  = board.length;
   const weeklyBase   = playerCount;
   const totalPot     = playerCount * seasonWeeks;
+
+  const playersAsOf = (iso) => {
+    if (!iso) return playerCount;
+    const cutoff = new Date(iso).getTime();
+    return users.filter(u => !u.registeredAt || new Date(u.registeredAt).getTime() < cutoff).length;
+  };
 
   const weekly = [];
   let running = 0;   // banked by weeks nobody won; reset to 0 on every payout
@@ -1112,8 +1123,8 @@ function calcPraise() {
     if (!gameweekComplete(gw, results)) continue;
 
     // A week's own allocation may be overridden per gameweek; otherwise it is
-    // the standard weekly base.
-    const allocation = gw.praise != null ? Number(gw.praise) : weeklyBase;
+    // the number of players registered as of that week's lock time.
+    const allocation = gw.praise != null ? Number(gw.praise) : playersAsOf(gw.lockTime);
     running += allocation;
 
     const winners = board
