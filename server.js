@@ -1107,7 +1107,26 @@ function calcPraise() {
   // A registered account only counts toward the pot once it's actually
   // playing — someone who signed up but never entered a single prediction
   // (didn't pay, never intended to play) shouldn't inflate anyone's jackpot.
-  const activeUsers  = users.filter(u => u.predictions && Object.keys(u.predictions).length > 0);
+  // And a week only counts a player once they'd actually started: we use
+  // the lockTime of the *first* gameweek they ever have a prediction in,
+  // not registeredAt — someone can register early but only start paying
+  // and predicting a few weeks later (e.g. Maghull).
+  const gwList = gws.gameweeks || [];
+  const firstPlayedLockTime = (user) => {
+    const preds = user.predictions || {};
+    let earliest = null;
+    for (const gw of gwList) {
+      const played = (gw.matches || []).some(m => preds[m.id]);
+      if (!played) continue;
+      const t = gw.lockTime ? new Date(gw.lockTime).getTime() : (gw.number ?? Infinity);
+      if (earliest === null || t < earliest) earliest = t;
+    }
+    return earliest;   // null = never entered a single prediction
+  };
+
+  const activeUsers = users
+    .map(u => ({ user: u, firstPlayed: firstPlayedLockTime(u) }))
+    .filter(u => u.firstPlayed !== null);
 
   const seasonWeeks  = Number(gws.praise?.seasonWeeks ?? 40);
   const playerCount  = activeUsers.length;
@@ -1117,7 +1136,7 @@ function calcPraise() {
   const playersAsOf = (iso) => {
     if (!iso) return playerCount;
     const cutoff = new Date(iso).getTime();
-    return activeUsers.filter(u => !u.registeredAt || new Date(u.registeredAt).getTime() < cutoff).length;
+    return activeUsers.filter(u => u.firstPlayed <= cutoff).length;
   };
 
   const weekly = [];
