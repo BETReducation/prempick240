@@ -1104,15 +1104,20 @@ function calcPraise() {
   // registered for it, not today's headcount — otherwise a week played
   // before a new player joined gets inflated retroactively. We use each
   // gameweek's lockTime as the cutoff, same idea as cupEligibilityCutoff().
+  // A registered account only counts toward the pot once it's actually
+  // playing — someone who signed up but never entered a single prediction
+  // (didn't pay, never intended to play) shouldn't inflate anyone's jackpot.
+  const activeUsers  = users.filter(u => u.predictions && Object.keys(u.predictions).length > 0);
+
   const seasonWeeks  = Number(gws.praise?.seasonWeeks ?? 40);
-  const playerCount  = board.length;
+  const playerCount  = activeUsers.length;
   const weeklyBase   = playerCount;
   const totalPot     = playerCount * seasonWeeks;
 
   const playersAsOf = (iso) => {
     if (!iso) return playerCount;
     const cutoff = new Date(iso).getTime();
-    return users.filter(u => !u.registeredAt || new Date(u.registeredAt).getTime() < cutoff).length;
+    return activeUsers.filter(u => !u.registeredAt || new Date(u.registeredAt).getTime() < cutoff).length;
   };
 
   const weekly = [];
