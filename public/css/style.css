@@ -1880,8 +1880,8 @@ footer span {
 
 /* Movement arrows keep the original workbook's inverted convention: moving
    up the table (fewer = better) reads red, moving down reads blue/teal. */
-.move-up   { color: var(--red);  font-weight: 700; font-size: 12px; white-space: nowrap; }
-.move-down { color: var(--teal); font-weight: 700; font-size: 12px; white-space: nowrap; }
+.move-up   { color: var(--teal); font-weight: 700; font-size: 12px; white-space: nowrap; }
+.move-down { color: var(--red);  font-weight: 700; font-size: 12px; white-space: nowrap; }
 
 .perfect-badge {
   display: inline-block;

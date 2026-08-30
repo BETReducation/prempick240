@@ -4,8 +4,7 @@
 function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
 
-// Movement arrows follow the original workbook's inverted convention:
-// moving UP the table (fewer = better) renders red, moving down renders blue.
+// Movement arrows: moving up the table renders green (teal), down renders red.
 function movementBadge(movement) {
   if (!movement) return '<span class="muted">-</span>';
   return movement > 0
