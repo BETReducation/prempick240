@@ -15,6 +15,7 @@ function movementBadge(movement) {
 
 function renderTable(board, gws, meId, positionHistory) {
   const played = gws.gameweeks.filter(g => g.complete);
+  const currentGwId = gws.currentGameweekId;
   const moveById = {};
   (positionHistory || []).forEach(p => { moveById[p.id] = p.movement; });
 
@@ -24,15 +25,17 @@ function renderTable(board, gws, meId, positionHistory) {
         <th class="col-pos">#</th>
         <th class="col-player">Player</th>
         <th class="col-num" title="Movement since last completed gameweek">Move</th>
-        <th class="col-pts" title="1 point per correct result">Results</th>
-        <th class="col-pts" title="Exact scorelines — tie-breaker">Exact</th>
-        <th class="col-num" title="Weeks with all six results correct">Perfect weeks</th>
-        <th class="col-num" title="Predictions entered for the current gameweek">This week</th>
+        <th class="col-pts" title="Correct results this gameweek">Week Results</th>
+        <th class="col-pts" title="Exact scorelines this gameweek">Week Exact</th>
+        <th class="col-pts strong" title="1 point per correct result, season total">Total Results</th>
+        <th class="col-pts" title="Exact scorelines — tie-breaker, season total">Total Exact</th>
+        <th class="col-num" title="Weeks won the jackpot (all six results correct)">Jackpot wins</th>
       </tr>
     </thead>
     <tbody>
       ${board.length ? board.map((p, i) => {
-        const perfect = played.filter(g => p.perGameweek[g.id]?.perfect).length;
+        const jackpotWins = played.filter(g => p.perGameweek[g.id]?.perfect).length;
+        const weekStats = currentGwId ? p.perGameweek[currentGwId] : null;
         return `
         <tr class="${p.id === meId ? 'is-me' : ''}">
           <td class="col-pos">${i + 1}</td>
@@ -40,12 +43,13 @@ function renderTable(board, gws, meId, positionHistory) {
             ${esc(p.displayName || p.name)}
           </td>
           <td class="col-num">${movementBadge(moveById[p.id])}</td>
+          <td class="col-pts">${weekStats?.resultPoints ?? 0}</td>
+          <td class="col-pts">${weekStats?.scorePoints ?? 0}</td>
           <td class="col-pts strong">${p.resultPoints}</td>
           <td class="col-pts">${p.scorePoints}</td>
-          <td class="col-num">${perfect ? `<span class="perfect-badge">${perfect}</span>` : '—'}</td>
-          <td class="col-num muted">${p.weeklyPredictions ?? 0}</td>
+          <td class="col-num">${jackpotWins ? `<span class="perfect-badge">${jackpotWins}</span>` : '—'}</td>
         </tr>`;
-      }).join('') : `<tr><td colspan="7" class="empty">No players yet.</td></tr>`}
+      }).join('') : `<tr><td colspan="8" class="empty">No players yet.</td></tr>`}
     </tbody>`;
 }
 
