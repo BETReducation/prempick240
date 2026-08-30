@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node scripts/sync-scores.js"
+cronSchedule = "*/15 * * * *"
+restartPolicyType = "never"
