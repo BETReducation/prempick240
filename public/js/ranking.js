@@ -27,7 +27,7 @@ function renderTable(board, gws, meId, positionHistory) {
         <th class="col-num" title="Movement since last completed gameweek">Move</th>
         <th class="col-pts" title="Correct results this gameweek">Week Results</th>
         <th class="col-pts" title="Exact scorelines this gameweek">Week Exact</th>
-        <th class="col-pts strong" title="1 point per correct result, season total">Total Results</th>
+        <th class="col-pts" title="1 point per correct result, season total">Total Results</th>
         <th class="col-pts" title="Exact scorelines — tie-breaker, season total">Total Exact</th>
         <th class="col-num" title="Weeks won the jackpot (all six results correct)">Jackpot wins</th>
       </tr>
