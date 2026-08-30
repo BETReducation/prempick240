@@ -44,7 +44,7 @@ function renderTable(board, gws, meId, positionHistory) {
           <td class="col-num">${movementBadge(moveById[p.id])}</td>
           <td class="col-pts">${weekStats?.resultPoints ?? 0}</td>
           <td class="col-pts">${weekStats?.scorePoints ?? 0}</td>
-          <td class="col-pts strong">${p.resultPoints}</td>
+          <td class="col-pts">${p.resultPoints}</td>
           <td class="col-pts">${p.scorePoints}</td>
           <td class="col-num">${jackpotWins ? `<span class="perfect-badge">${jackpotWins}</span>` : '—'}</td>
         </tr>`;
