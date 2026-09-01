@@ -2471,7 +2471,13 @@ input.score-input:disabled { opacity: 0.5; }
   /* Tabs shrink and scroll; the deadline keeps its width. Over a 40-week
      season the tab bar grows well past the viewport, and sizing it the other
      way round would push the deadline off screen. */
-  .gw-strip .tab-bar { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
+  /* #gwTabs carries the shared desktop-centering rule (margin-left/right:
+     auto, max-width:760px) from the #gwTabs selector list further down. As a
+     flex item those auto margins override stretch and let the bar size to
+     its full unclipped content width instead of the viewport — which is why
+     it overflowed past the screen edge with no scrollbar rather than
+     actually scrolling. Reset both here. */
+  .gw-strip .tab-bar { margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%; }
   .gw-strip .lock-notice {
     flex: 0 0 auto;
     justify-content: flex-start;
@@ -2495,6 +2501,14 @@ input.score-input:disabled { opacity: 0.5; }
     flex-direction: column;
     align-items: stretch;
   }
+  /* #lockBanner itself carries the desktop centering rule (margin-left/right:
+     auto, from the shared #lockBanner selector further down). On a flex item,
+     auto cross-axis margins override `align-items: stretch` and shrink-wrap +
+     center the box instead — that's what was pushing the deadline text into
+     the middle of the row with a large gap on the left, regardless of any
+     alignment set on .lock-notice inside it. Zero it out here so the banner
+     actually stretches full width as intended. */
+  .gw-strip #lockBanner { margin-left: 0; margin-right: 0; width: 100%; }
   .gw-strip .lock-notice {
     width: 100%;
     text-align: left;
