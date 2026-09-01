@@ -74,6 +74,7 @@
       <button class="tab-btn active" data-panel="fixtures">Fixtures</button>
       <button class="tab-btn" data-panel="results">Results</button>
       <button class="tab-btn" data-panel="records">Records</button>
+      <button class="tab-btn" data-panel="entries">Entries</button>
       <button class="tab-btn" data-panel="cup">Cup</button>
     </div>
   </div>
@@ -144,6 +145,14 @@
       <span class="admin-hint" id="recordHint"></span>
     </div>
     <div id="recordTable"></div>
+  </div>
+
+  <!-- ── Entries ────────────────────────────────────────────────────────── -->
+  <div class="section section--flush section--wide admin-panel" id="panel-entries" style="display:none;">
+    <p class="section-desc" id="entriesHint">Predictions entered for the current gameweek. Resets to 0 once its deadline passes and the next week becomes active.</p>
+    <div class="table-scroll">
+      <table class="admin-overview-table" id="entriesTable"></table>
+    </div>
   </div>
 
   <!-- ── Cup ────────────────────────────────────────────────────────────── -->

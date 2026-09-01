@@ -11,6 +11,7 @@ let ADMIN_PW = sessionStorage.getItem('pp240_adminpw') || null;
 let ALL_PREDS = [];    // every player's predictions — locked weeks only
 let USERS     = [];    // /api/users — { id, name } for cup/international player pickers
 let CUP       = { rounds: [] };
+let LEADERBOARD = [];  // /api/leaderboard — for the Entries panel's weeklyPredictions
 
 const COMPS = ['PL', 'CH', 'CUP', 'INTL'];
 const COMP_NAME = { PL: 'Premier League', CH: 'Championship', CUP: 'Cup', INTL: 'International' };
@@ -490,18 +491,20 @@ function fillSelects() {
 }
 
 async function refresh() {
-  const [gws, res, preds, users, cup] = await Promise.all([
+  const [gws, res, preds, users, cup, board] = await Promise.all([
     // Admin headers so this returns every week, including future ones not yet
     // revealed to players.
     adminFetch('/api/gameweeks'), API.results(), API.allPredictions().catch(() => []),
     API.users().catch(() => []),
-    adminFetch('/api/admin/cup').catch(() => ({ rounds: [] }))
+    adminFetch('/api/admin/cup').catch(() => ({ rounds: [] })),
+    API.leaderboard().catch(() => [])
   ]);
   GWS = gws;
   RESULTS = res.results || {};
   ALL_PREDS = preds || [];
   USERS = users || [];
   CUP  = { rounds: (cup.rounds || []).map(r => ({ ...r, ties: (r.ties || []).map(t => ({ replayGameweekIds: [], ...t })) })) };
+  LEADERBOARD = board || [];
   fillSelects();
   renderResultPanel();
   await renderPraisePreview();
@@ -509,6 +512,33 @@ async function refresh() {
   renderRecords();
   renderCupPanel();
   renderSeasonOverview();
+  renderEntriesPanel();
+}
+
+// ── Entries ───────────────────────────────────────────────────────────────
+// One column: predictions entered so far for the active gameweek. Sourced
+// from /api/leaderboard's weeklyPredictions, which already resets to 0 the
+// moment the active gameweek rolls over (see gameweekResetTime in server.js)
+// — nothing to compute here, just render it.
+
+function renderEntriesPanel() {
+  const current = GWS.gameweeks.find(g => g.id === GWS.currentGameweekId);
+  const label = current ? (current.label || `Gameweek ${current.number}`) : 'the current gameweek';
+  el('entriesHint').textContent =
+    `Predictions entered for ${label}. Resets to 0 once its deadline passes and the next week becomes active.`;
+
+  const rows = LEADERBOARD.slice().sort((a, b) =>
+    b.weeklyPredictions - a.weeklyPredictions || a.name.localeCompare(b.name));
+
+  el('entriesTable').innerHTML = `
+    <thead><tr><th>Player</th><th>Entered</th></tr></thead>
+    <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td>${esc(r.displayName || r.name)}</td>
+          <td>${r.weeklyPredictions}</td>
+        </tr>`).join('')}
+    </tbody>`;
 }
 
 // ── Season overview ──────────────────────────────────────────────────────────
@@ -771,6 +801,7 @@ async function boot() {
       el('panel-results').style.display  = b.dataset.panel === 'results'  ? '' : 'none';
       el('panel-fixtures').style.display = b.dataset.panel === 'fixtures' ? '' : 'none';
       el('panel-records').style.display  = b.dataset.panel === 'records'  ? '' : 'none';
+      el('panel-entries').style.display  = b.dataset.panel === 'entries'  ? '' : 'none';
       el('panel-cup').style.display          = b.dataset.panel === 'cup'          ? '' : 'none';
     }));
 
