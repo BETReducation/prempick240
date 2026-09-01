@@ -1505,10 +1505,19 @@ footer span {
     margin-bottom: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
-    scrollbar-width: none;
     gap: 6px;
+    /* Visible scrollbar — a hidden one gave no hint the strip scrolls, so a
+       cut-off active tab (past a season's worth of weeks) looked like a bug
+       rather than something to swipe past. */
+    scrollbar-width: thin;
+    padding-bottom: 4px;
   }
-  #gwTabsWrap .tab-bar::-webkit-scrollbar { display: none; }
+  #gwTabsWrap .tab-bar::-webkit-scrollbar { height: 6px; display: block; }
+  #gwTabsWrap .tab-bar::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 3px;
+  }
+  #gwTabsWrap .tab-bar::-webkit-scrollbar-track { background: transparent; }
 
   /* Show short label only on mobile */
   .tab-label-long  { display: none; }

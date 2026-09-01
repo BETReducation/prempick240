@@ -99,6 +99,11 @@ function renderTabs() {
       render();
     })
   );
+  // On mobile the strip scrolls horizontally and starts scrolled to the left,
+  // so the active gameweek's own tab can sit off-screen past week 1/2. Bring
+  // it into view without disturbing the rest of the page's scroll position.
+  const activeTab = wrap.querySelector('.tab-btn.active');
+  if (activeTab) activeTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 function renderBanner(gw) {
