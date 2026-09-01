@@ -1500,11 +1500,19 @@ footer span {
     border-bottom: 1px solid var(--border);
     padding: 8px 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    /* iOS WebKit (Safari and Chrome, same engine) can fail to route touch
+       drags to a horizontally-scrolling descendant of a `position: sticky`
+       ancestor — the gesture gets swallowed by the sticky element instead.
+       Forcing this element onto its own compositing layer works around it. */
+    transform: translateZ(0);
   }
   #gwTabsWrap .tab-bar {
     margin-bottom: 0;
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
     gap: 6px;
     /* Visible scrollbar — a hidden one gave no hint the strip scrolls, so a
        cut-off active tab (past a season's worth of weeks) looked like a bug
@@ -2466,14 +2474,14 @@ input.score-input:disabled { opacity: 0.5; }
   .gw-strip .tab-bar { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
   .gw-strip .lock-notice {
     flex: 0 0 auto;
-    justify-content: flex-end;
+    justify-content: flex-start;
     background: none;
     border: none;
     padding: 0;
     margin: 0;
     font-size: 11px;
     line-height: 1.3;
-    text-align: right;
+    text-align: left;
   }
   .gw-strip .lock-notice i { display: none; }
 
