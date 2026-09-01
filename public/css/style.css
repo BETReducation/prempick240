@@ -2471,13 +2471,16 @@ input.score-input:disabled { opacity: 0.5; }
   /* Tabs shrink and scroll; the deadline keeps its width. Over a 40-week
      season the tab bar grows well past the viewport, and sizing it the other
      way round would push the deadline off screen. */
-  /* #gwTabs carries the shared desktop-centering rule (margin-left/right:
-     auto, max-width:760px) from the #gwTabs selector list further down. As a
-     flex item those auto margins override stretch and let the bar size to
-     its full unclipped content width instead of the viewport — which is why
-     it overflowed past the screen edge with no scrollbar rather than
-     actually scrolling. Reset both here. */
-  .gw-strip .tab-bar { margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%; }
+  .gw-strip .tab-bar { flex: 1 1 auto; min-width: 0; }
+  /* #gwTabs is an ID selector (`#gwTabs, #adminTabs { max-width:760px;
+     margin-left/right:auto }` further down, unscoped by any media query),
+     which outranks any class-based override no matter the source order —
+     the .tab-bar rule above never actually touched its margin/max-width.
+     On a flex item those auto margins override stretch and let the bar
+     size to its full unclipped content width instead of the viewport,
+     which is why it overflowed the screen with no scrollbar instead of
+     clipping and scrolling. Match its specificity here to actually win. */
+  .gw-strip #gwTabs { margin: 0; max-width: 100%; }
   .gw-strip .lock-notice {
     flex: 0 0 auto;
     justify-content: flex-start;
