@@ -30,9 +30,17 @@ function normalize(name) {
 
 // Site uses short names ("Brighton"), football-data.org uses full club
 // names ("Brighton & Hove Albion FC") — containment either direction covers
-// every case seen so far (see CLAUDE.md team list).
+// most cases, but abbreviations like "Man Utd" share no substring with
+// "Manchester United FC" at all, so those need an explicit alias.
+const ALIASES = {
+  'manutd': 'manchesterunited',
+  'mancity': 'manchestercity',
+  'spurs': 'tottenhamhotspur',
+  'wolves': 'wolverhamptonwanderers',
+};
+
 function namesMatch(siteName, apiName) {
-  const a = normalize(siteName);
+  const a = ALIASES[normalize(siteName)] || normalize(siteName);
   const b = normalize(apiName);
   return a.length > 0 && (b.includes(a) || a.includes(b));
 }
