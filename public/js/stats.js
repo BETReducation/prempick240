@@ -140,37 +140,106 @@ function renderPraise(praise, board) {
     </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 }
 
-// Week Record: results-correct count per player per completed gameweek, for
-// the whole season — the site's replacement for the old workbook's "Week
-// Record" sheet. /api/week-record already returns players in rank order.
-function renderWeekRecord(record) {
-  const { weeks, rows } = record;
-  el('weekRecordTable').innerHTML = `
-    <thead>
-      <tr>
-        <th class="col-player">Player</th>
-        ${weeks.map(w => `<th class="col-num">Wk ${w.number}</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody>
-      ${rows.length ? rows.map(r => `
-        <tr>
-          <td class="col-player">${esc(r.displayName || r.name)}</td>
-          ${r.weeks.map(v => `<td class="col-num muted">${v ?? '—'}</td>`).join('')}
-        </tr>`).join('') : `<tr><td colspan="${weeks.length + 1}" class="empty">No completed gameweeks yet.</td></tr>`}
-    </tbody>`;
+// Week Record: the same week-by-week scoreline grid as Admin → Records,
+// but built on /api/predictions (locked weeks only, no admin auth needed)
+// rather than the admin-only /api/predictions all-users route. Replaces the
+// old results-correct-per-week table — this is a straight read of everyone's
+// picks against the actual result, colour-coded, one gameweek at a time.
+let STATS_GWS = null, STATS_PREDS = [], STATS_RESULTS = {};
+
+function recordRows(gw) {
+  return STATS_PREDS
+    .map(p => {
+      const picks = gw.matches.map(m => p.predictions[m.id] || null);
+      let correct = 0, exact = 0;
+      gw.matches.forEach((m, i) => {
+        const r = STATS_RESULTS[m.id], pr = picks[i];
+        if (!r || !r.played || !pr) return;
+        if (Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away)) correct++;
+        if (pr.home === r.home && pr.away === r.away) exact++;
+      });
+      return { ...p, picks, correct, exact, entered: picks.filter(Boolean).length };
+    })
+    .filter(p => p.entered > 0)
+    .sort((a, b) => b.correct - a.correct || b.exact - a.exact || a.name.localeCompare(b.name));
+}
+
+function renderRecords() {
+  const gw = STATS_GWS.gameweeks.find(g => g.id === el('recordGw').value);
+  const box = el('recordTable');
+  if (!gw) { box.innerHTML = '<p class="empty">No gameweeks yet.</p>'; return; }
+
+  const rows = recordRows(gw);
+  const anyResults = gw.matches.some(m => STATS_RESULTS[m.id]?.played);
+
+  if (!rows.length) { box.innerHTML = '<p class="empty wide-empty">Nobody entered predictions for this week.</p>'; return; }
+
+  box.innerHTML = `
+    <div class="table-wrap">
+      <table class="preds-table">
+        <thead>
+          <tr>
+            <th class="col-player">Player</th>
+            ${gw.matches.map(m => `<th class="col-fx"><span>${esc(m.home)}</span><span class="muted">v ${esc(m.away)}</span></th>`).join('')}
+            ${anyResults ? '<th class="col-pts">Results</th><th class="col-pts">Exact</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(p => `
+            <tr>
+              <td class="col-player">${esc(p.displayName || p.name)}</td>
+              ${gw.matches.map((m, i) => {
+                const pr = p.picks[i], r = STATS_RESULTS[m.id];
+                if (!pr) return '<td class="col-fx muted">—</td>';
+                let cls = '';
+                if (r && r.played) {
+                  const right = Math.sign(r.home - r.away) === Math.sign(pr.home - pr.away);
+                  const ex = pr.home === r.home && pr.away === r.away;
+                  cls = ex ? ' exact' : (right ? ' hit' : ' miss');
+                }
+                return `<td class="col-fx${cls}">${pr.home}–${pr.away}</td>`;
+              }).join('')}
+              ${anyResults ? `<td class="col-pts strong">${p.correct}</td><td class="col-pts">${p.exact}</td>` : ''}
+            </tr>`).join('')}
+          ${anyResults ? `
+            <tr class="actual-row">
+              <td class="col-player">Actual</td>
+              ${gw.matches.map(m => {
+                const r = STATS_RESULTS[m.id];
+                return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
+              }).join('')}
+              <td class="col-pts"></td><td class="col-pts"></td>
+            </tr>` : ''}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function fillRecordSelect() {
+  const locked = STATS_GWS.gameweeks.filter(g => g.locked);
+  const sel = el('recordGw');
+  // Newest first — you'll usually want the week just gone.
+  sel.innerHTML = locked.slice().reverse()
+    .map(g => `<option value="${g.id}">${esc(g.label)}</option>`).join('');
+  sel.value = locked.at(-1)?.id || '';
 }
 
 async function init() {
   try {
-    const [board, gws, praise, weekRecord] = await Promise.all([
-      API.leaderboard(), API.gameweeks(), API.praise(), API.weekRecord()
+    const [board, gws, praise, preds, res] = await Promise.all([
+      API.leaderboard(), API.gameweeks(), API.praise(), API.allPredictions(), API.results()
     ]);
+
+    STATS_GWS = gws;
+    STATS_PREDS = preds || [];
+    STATS_RESULTS = res.results || {};
 
     renderFormGuide(board, gws);
     renderMotw(board, gws);
     renderPraise(praise, board);
-    renderWeekRecord(weekRecord);
+    fillRecordSelect();
+    renderRecords();
+    el('recordGw').addEventListener('change', renderRecords);
 
     el('loadingState').style.display = 'none';
     el('statsApp').style.display     = '';

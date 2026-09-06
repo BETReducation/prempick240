@@ -406,6 +406,19 @@ function gameweekComplete(gw, results) {
   return matches.length > 0 && matches.every(m => results[m.id] && results[m.id].played);
 }
 
+// A week can be counted for the praise jackpot before every result is in, once
+// it's mathematically certain nobody can still call all six — i.e. every
+// player already has at least one wrong (or unpredicted) result among the
+// fixtures played so far. That can't change once a fixture's result is in, so
+// there's no need to wait for the rest of the week to kick off. Full
+// completion always resolves too (a real winner needs every result in).
+function gameweekPraiseResolved(gw, results, board) {
+  if (gameweekComplete(gw, results)) return true;
+  const played = (gw.matches || []).filter(m => results[m.id]?.played);
+  if (!played.length) return false;
+  return !board.some(p => played.every(m => p.matchPoints[m.id]?.result === 1));
+}
+
 // When a gameweek's window closes: 2 hours 15 minutes after the last game
 // kicks off (roughly final whistle + 30 min). This one instant drives two
 // things — the weekly prediction count on the ranking table resets to 0, and
@@ -1144,7 +1157,7 @@ function calcPraise() {
   let claimed = 0;
 
   for (const gw of gws.gameweeks || []) {
-    if (!gameweekComplete(gw, results)) continue;
+    if (!gameweekPraiseResolved(gw, results, board)) continue;
 
     // A week's own allocation may be overridden per gameweek; otherwise it is
     // the number of players registered as of that week's lock time.
