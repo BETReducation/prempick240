@@ -78,16 +78,34 @@ async function main() {
 
   console.log(`[${new Date().toISOString()}] ${pending.length} match(es) ready: ${pending.map(m => m.id).join(', ')}`);
 
-  // One football-data.org call covering every pending match's date range.
-  const kickoffs = pending.map(m => new Date(m.kickoff).getTime());
-  const dateFrom = new Date(Math.min(...kickoffs) - 2 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const dateTo = new Date(Math.max(...kickoffs) + 2 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  // football-data.org caps a single dateFrom/dateTo span at 10 days, but
+  // pending matches can be scattered across gameweeks (e.g. one stuck older
+  // match plus a fresh week), so one wide call can exceed that. Group
+  // matches into windows of at most 10 days each instead of one blind call.
+  const byKickoff = [...pending].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  const PAD_MS = 2 * 24 * 3600 * 1000;
+  const MAX_SPAN_MS = 10 * 24 * 3600 * 1000;
+  const windows = [];
+  for (const m of byKickoff) {
+    const t = new Date(m.kickoff).getTime();
+    const last = windows[windows.length - 1];
+    if (last && t - PAD_MS - last.to <= MAX_SPAN_MS) {
+      last.to = Math.max(last.to, t + PAD_MS);
+    } else {
+      windows.push({ from: t - PAD_MS, to: t + PAD_MS });
+    }
+  }
 
-  const fd = await fetchJson(
-    `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`,
-    { 'X-Auth-Token': FD_API_KEY }
-  );
-  const fdMatches = fd.matches || [];
+  const fdMatches = [];
+  for (const w of windows) {
+    const dateFrom = new Date(w.from).toISOString().slice(0, 10);
+    const dateTo = new Date(w.to).toISOString().slice(0, 10);
+    const fd = await fetchJson(
+      `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      { 'X-Auth-Token': FD_API_KEY }
+    );
+    fdMatches.push(...(fd.matches || []));
+  }
 
   for (const m of pending) {
     const kickoffMs = new Date(m.kickoff).getTime();
