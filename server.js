@@ -1528,10 +1528,10 @@ app.get('/api/profile/:userId', (req, res) => {
     joinedAt: user.registeredAt,
     inviteCode: user.inviteCode || null,
     stats: {
-      totalPoints:        entry.totalPoints        || 0,
+      totalPoints:        entry.resultPoints       || 0,
       rank, totalPlayers: board.length,
-      correctResults:     entry.correctResults     || 0,
-      correctScores:      entry.correctScores      || 0,
+      correctResults:     entry.resultPoints       || 0,
+      correctScores:      entry.scorePoints        || 0,
       predictionsEntered: entry.predictionsEntered || 0,
       bestPosition:       posHistory?.best  ?? rank,
       worstPosition:      posHistory?.worst ?? rank
