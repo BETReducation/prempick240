@@ -704,12 +704,14 @@ app.post('/api/register', (req, res) => {
     return res.status(429).json({ error: 'Too many sign-in attempts. Please wait 15 minutes and try again.' });
 
   const name      = sanitise(req.body.name, 30);
-  const email     = sanitise(req.body.email || '', 254).toLowerCase();
+  // Login identifier: either an email address or a username (display name).
+  // Signing up always still requires a real email, checked below.
+  const identifier = sanitise(req.body.email || '', 254);
+  const email       = identifier.toLowerCase();
   const password  = String(req.body.password || '').trim();
 
-  // Validate email
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return res.status(400).json({ error: 'A valid email address is required.' });
+  if (!identifier)
+    return res.status(400).json({ error: 'A valid email address or username is required.' });
 
   // Validate password
   if (!password || password.length < 8)
@@ -717,12 +719,17 @@ app.post('/api/register', (req, res) => {
 
   const data = readJSON(PREDICTIONS_FILE, { users: [] });
 
-  // ── Sign in to existing email account ───────────────────────────────────────
-  const existing = data.users.find(u => u.email && u.email.toLowerCase() === email);
+  // ── Sign in to existing account, by email or by username ────────────────────
+  const identifierLower = identifier.toLowerCase();
+  const existing = data.users.find(u =>
+    (u.email && u.email.toLowerCase() === email) ||
+    (u.name && u.name.toLowerCase() === identifierLower) ||
+    (u.displayName && u.displayName.toLowerCase() === identifierLower)
+  );
   if (existing) {
     if (!checkPassword(password, existing)) {
       recordFailure(req);
-      return res.status(401).json({ error: 'Email or password incorrect.' });
+      return res.status(401).json({ error: 'Email/username or password incorrect.' });
     }
     clearFailures(req);
     const token = createSession(existing.id);
@@ -732,6 +739,10 @@ app.post('/api/register', (req, res) => {
   // ── New account ──────────────────────────────────────────────────────────────
   if (!name)
     return res.status(400).json({ error: 'Please enter your display name to create an account.' });
+
+  // New accounts must register with a real email (needed for password reset).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ error: 'A valid email address is required to create an account.' });
 
   // Validate invite code
   const accessCode = sanitise(req.body.accessCode || '', 100);

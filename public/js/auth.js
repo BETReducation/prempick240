@@ -165,15 +165,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <!-- ── Sign in / Sign up view ── -->
           <div id="navAuthSigninView">
             <h2><i class="fa-regular fa-futbol"></i> Sign In</h2>
-            <p>Sign in with your email and password. New players need an invite code to create an account.</p>
+            <p>Sign in with your email or username and password. New players need an invite code to create an account (email required for new accounts).</p>
             <div id="navAuthError" class="error-msg hidden"></div>
             <div class="form-group">
               <label for="navAuthName">Display name <span style="color:var(--muted);font-size:11px;">(new accounts only)</span></label>
               <input type="text" id="navAuthName" placeholder="e.g. Gary" maxlength="30" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="navAuthEmail">Email address</label>
-              <input type="email" id="navAuthEmail" placeholder="you@example.com" autocomplete="email">
+              <label for="navAuthEmail">Email or username</label>
+              <input type="text" id="navAuthEmail" placeholder="you@example.com or your display name" autocomplete="username">
             </div>
             <div class="form-group">
               <label for="navAuthPassword">Password <span style="color:var(--muted);font-size:11px;">(min. 8 characters)</span></label>
@@ -250,7 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const ac = codeInput.value.trim() || null;
       errorEl.classList.add('hidden');
 
-      if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { showNavErr('Please enter a valid email address.'); return; }
+      const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+      if (!em) { showNavErr('Please enter your email or username.'); return; }
+      if (n && !isEmailFormat) { showNavErr('A valid email address is required to create an account.'); return; }
       if (!pw || pw.length < 8) { showNavErr('Password must be at least 8 characters.'); return; }
 
       submitBtn.disabled    = true;
