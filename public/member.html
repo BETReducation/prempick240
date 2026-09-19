@@ -696,9 +696,9 @@
           </select>
         </div>
         <div class="form-group" style="margin:0;">
-          <label>Group</label>
-          <select id="editPredGroup" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;" onchange="onEditPredGroupChange()">
-            <option value="">— select group —</option>
+          <label>Gameweek</label>
+          <select id="editPredGw" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;" onchange="onEditPredGwChange()">
+            <option value="">— select gameweek —</option>
           </select>
         </div>
       </div>
@@ -734,7 +734,7 @@
     <div class="danger-grid">
       <div class="danger-item">
         <div class="danger-title">Reset Predictions</div>
-        <div class="danger-desc">Clear all your match predictions. This cannot be undone — you will need to re-enter all 72 scores before the round locks.</div>
+        <div class="danger-desc">Clear all your match predictions. This cannot be undone — you will need to re-enter them before the gameweek locks.</div>
         <button class="btn btn-danger" onclick="confirmReset()">Reset Predictions</button>
       </div>
       <div class="danger-item">
@@ -1453,17 +1453,17 @@ function copyCode(code) {
 
 // ── Admin: reset all user accounts ────────────────────────────────────────────
 // ── Admin: edit prediction ─────────────────────────────────────────────────────
-let editPredFixtures = null;
-let editPredUsers = [];
+let editPredGws = [];
 let editPredAllPredictions = {};
 
 async function initEditPredSection() {
   try {
-    const [fixtures, users, preds] = await Promise.all([API.fixtures(), API.users(), API.allPredictions()]);
-    editPredFixtures = fixtures;
-    editPredUsers = users;
-    editPredAllPredictions = {};
-    preds.forEach(p => { editPredAllPredictions[p.id] = p.predictions || {}; });
+    const { token } = Session.load();
+    const [gws, users] = await Promise.all([
+      API.get('/api/gameweeks', token ? { 'x-session-token': token } : {}),
+      API.users()
+    ]);
+    editPredGws = (Array.isArray(gws) ? gws : gws.gameweeks || []).slice().sort((a, b) => a.number - b.number);
 
     const playerSel = document.getElementById('editPredPlayer');
     playerSel.innerHTML = '<option value="">— select player —</option>';
@@ -1473,31 +1473,38 @@ async function initEditPredSection() {
       playerSel.appendChild(opt);
     });
 
-    const groupSel = document.getElementById('editPredGroup');
-    groupSel.innerHTML = '<option value="">— select group —</option>';
-    Object.keys(fixtures.groups).sort().forEach(g => {
+    const gwSel = document.getElementById('editPredGw');
+    gwSel.innerHTML = '<option value="">— select gameweek —</option>';
+    editPredGws.forEach(g => {
       const opt = document.createElement('option');
-      opt.value = g; opt.textContent = 'Group ' + g;
-      groupSel.appendChild(opt);
+      opt.value = g.id; opt.textContent = g.label || ('Gameweek ' + g.number);
+      gwSel.appendChild(opt);
     });
   } catch { }
 }
 
-function onEditPredPlayerChange() {
+async function onEditPredPlayerChange() {
   document.getElementById('editPredScoreRow').style.display = 'none';
+  const userId = document.getElementById('editPredPlayer').value;
+  // /api/predictions hides unlocked weeks, so fetch the player's own picks.
+  if (userId && !editPredAllPredictions[userId]) {
+    try { editPredAllPredictions[userId] = (await API.myPredictions(userId)).predictions || {}; }
+    catch { editPredAllPredictions[userId] = {}; }
+  }
   onEditPredMatchChange();
 }
 
-function onEditPredGroupChange() {
-  const g = document.getElementById('editPredGroup').value;
+function onEditPredGwChange() {
+  const id = document.getElementById('editPredGw').value;
   const matchSel = document.getElementById('editPredMatch');
   matchSel.innerHTML = '<option value="">— select match —</option>';
   document.getElementById('editPredScoreRow').style.display = 'none';
-  if (!g || !editPredFixtures) return;
-  editPredFixtures.groups[g].matches.forEach(m => {
+  const gw = editPredGws.find(g => g.id === id);
+  if (!gw) return;
+  gw.matches.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.id;
-    opt.textContent = `R${m.round}: ${m.home} vs ${m.away}`;
+    opt.textContent = `${m.home} vs ${m.away}`;
     matchSel.appendChild(opt);
   });
 }
@@ -1506,11 +1513,10 @@ function onEditPredMatchChange() {
   const userId = document.getElementById('editPredPlayer').value;
   const matchId = document.getElementById('editPredMatch').value;
   const row = document.getElementById('editPredScoreRow');
-  if (!userId || !matchId || !editPredFixtures) { row.style.display = 'none'; return; }
+  if (!userId || !matchId) { row.style.display = 'none'; return; }
 
-  // Find match info
   let match = null;
-  for (const g of Object.values(editPredFixtures.groups)) {
+  for (const g of editPredGws) {
     match = g.matches.find(m => m.id === matchId);
     if (match) break;
   }
