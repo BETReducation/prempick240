@@ -603,17 +603,6 @@
     </div>
   </div>
 
-  <!-- My Predictions -->
-  <div class="profile-section">
-    <div class="section-hdr">My Predictions</div>
-    <div class="section-body" id="predictionsBody">
-      <div class="loading-state" style="padding: 20px 0;">
-        <div class="spinner"></div>
-        <p>Loading predictions…</p>
-      </div>
-    </div>
-  </div>
-
   <!-- Account Settings -->
   <div class="profile-section">
     <div class="section-hdr">Account Settings</div>
@@ -827,7 +816,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('memberPage').style.display = 'flex';
   await loadProfile();
-  await loadPredictions();
 
   // Show admin section if this is the admin account
   try {
@@ -922,149 +910,6 @@ function populateStats(data) {
   }
 }
 
-// ── Load predictions ───────────────────────────────────────────────────────────
-async function loadPredictions() {
-  const body = document.getElementById('predictionsBody');
-  try {
-    const [fixturesData, predData, resultsData] = await Promise.all([
-      API.fixtures(),
-      API.myPredictions(currentUserId),
-      API.results()
-    ]);
-
-    const matchPoints   = (profileData && profileData.matchPoints) ? profileData.matchPoints : {};
-    const actualResults = resultsData.results || {};
-    const myPreds       = predData.predictions || {};
-    const groups        = fixturesData.groups   || {};
-    const knockout      = fixturesData.knockout || {};
-
-    // Build team lookup for knockout name resolution
-    const allTeams = {};
-    Object.values(groups).forEach(g => g.teams.forEach(t => { allTeams[t.id] = t; }));
-
-    body.innerHTML = '';
-
-    // ── Round points breakdown bar ─────────────────────────────────────
-    const roundPts = { R1: 0, R2: 0, R3: 0 };
-    Object.entries(groups).forEach(([, group]) => {
-      (group.matches || []).forEach(m => {
-        const pts = matchPoints[m.id] || 0;
-        const n = parseInt(m.id.slice(-1));
-        const r = n <= 2 ? 'R1' : n <= 4 ? 'R2' : 'R3';
-        roundPts[r] += pts;
-      });
-    });
-    const anyRoundPlayed = Object.values(groups).some(g =>
-      (g.matches || []).some(m => actualResults[m.id]?.played)
-    );
-    if (anyRoundPlayed) {
-      const total = roundPts.R1 + roundPts.R2 + roundPts.R3;
-      const bar = document.createElement('div');
-      bar.className = 'round-pts-bar';
-      bar.innerHTML = ['R1', 'R2', 'R3'].map(r => `
-        <div class="round-pts-box">
-          <div class="rpb-label">Round ${r.slice(1)}</div>
-          <div class="rpb-value">${roundPts[r]}</div>
-        </div>`).join('') + `
-        <div class="round-pts-box round-pts-total">
-          <div class="rpb-label">Total</div>
-          <div class="rpb-value">${total}</div>
-        </div>`;
-      body.appendChild(bar);
-    }
-
-    // ── Group stage ────────────────────────────────────────────────────
-    for (const [groupKey, group] of Object.entries(groups)) {
-      const matches = group.matches || [];
-      const label   = group.name || ('Group ' + groupKey);
-
-      const enteredCount   = matches.filter(m => myPreds[m.id] !== undefined).length;
-      const ptsForGroup    = matches.reduce((sum, m) => sum + (matchPoints[m.id] || 0), 0);
-      const anyPlayed      = matches.some(m => actualResults[m.id]?.played);
-      const ptsBadge       = anyPlayed
-        ? `<span class="pts-badge pts-${ptsForGroup >= 5 ? 5 : ptsForGroup >= 3 ? 3 : 0}">${ptsForGroup} pts</span>` : '';
-
-      const accordion = document.createElement('div');
-      accordion.className = 'group-accordion';
-      accordion.innerHTML = `
-        <button class="group-toggle" onclick="toggleGroup(this)">
-          <span>${label} &mdash; ${enteredCount}/${matches.length} entered ${ptsBadge}</span>
-          <span class="chevron">▾</span>
-        </button>
-        <div class="group-body">
-          <table class="pred-table">
-            <thead>
-              <tr>
-                <th>Match</th>
-                <th class="center">My Pick</th>
-                <th class="center">Result</th>
-                <th class="center">Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${matches.map(m => buildGroupMatchRow(m, group.teams, myPreds, matchPoints, actualResults)).join('')}
-            </tbody>
-          </table>
-        </div>`;
-      body.appendChild(accordion);
-    }
-
-    // ── Knockout stage ─────────────────────────────────────────────────
-    const ROUND_ORDER = ['R32', 'R16', 'QF', 'SF', '3P', 'F'];
-    const ROUND_NAMES = {
-      R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter-Finals',
-      SF: 'Semi-Finals', '3P': 'Third Place', F: 'Final'
-    };
-
-    const hasKnockout = ROUND_ORDER.some(r => knockout[r]);
-    if (hasKnockout) {
-      const sep = document.createElement('div');
-      sep.style.cssText = 'margin:16px 0 8px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--muted);';
-      sep.textContent = 'Knockout Stage';
-      body.appendChild(sep);
-
-      for (const roundKey of ROUND_ORDER) {
-        const round = knockout[roundKey];
-        if (!round) continue;
-        const matches = [...(round.matches || [])].sort((a, b) => (a.num || 0) - (b.num || 0));
-        const label   = ROUND_NAMES[roundKey] || roundKey;
-
-        const enteredCount = matches.filter(m => myPreds[m.id] !== undefined).length;
-        const ptsForRound  = matches.reduce((sum, m) => sum + (matchPoints[m.id] || 0), 0);
-        const anyPlayed    = matches.some(m => actualResults[m.id]?.played);
-        const ptsBadge     = anyPlayed
-          ? `<span class="pts-badge pts-${ptsForRound >= 5 ? 5 : ptsForRound >= 3 ? 3 : 0}">${ptsForRound} pts</span>` : '';
-
-        const accordion = document.createElement('div');
-        accordion.className = 'group-accordion';
-        accordion.innerHTML = `
-          <button class="group-toggle" onclick="toggleGroup(this)">
-            <span>${label} &mdash; ${enteredCount}/${matches.length} entered ${ptsBadge}</span>
-            <span class="chevron">▾</span>
-          </button>
-          <div class="group-body">
-            <table class="pred-table">
-              <thead>
-                <tr>
-                  <th>Match</th>
-                  <th class="center">My Pick</th>
-                  <th class="center">Result</th>
-                  <th class="center">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${matches.map(m => buildKoMatchRow(m, allTeams, myPreds, matchPoints, actualResults)).join('')}
-              </tbody>
-            </table>
-          </div>`;
-        body.appendChild(accordion);
-      }
-    }
-
-  } catch (e) {
-    body.innerHTML = '<p class="section-desc">Could not load predictions.</p>';
-  }
-}
 
 // ── Match row builders ─────────────────────────────────────────────────────────
 
@@ -1303,7 +1148,6 @@ async function runConfirmedAction() {
       showToast('Predictions cleared', 'ok');
       closeConfirm();
       await loadProfile();
-      await loadPredictions();
     } catch (e) {
       err.textContent = e.message;
     }
