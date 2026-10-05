@@ -1165,6 +1165,7 @@ function calcPraise() {
 
   const weekly = [];
   let running = 0;   // banked by weeks nobody won; reset to 0 on every payout
+  let runningWeeks = [];   // the weeks making up `running`, for per-player eligibility
   let claimed = 0;
 
   for (const gw of gws.gameweeks || []) {
@@ -1174,6 +1175,7 @@ function calcPraise() {
     // the number of players registered as of that week's lock time.
     const allocation = gw.praise != null ? Number(gw.praise) : playersAsOf(gw.lockTime);
     running += allocation;
+    runningWeeks.push({ allocation, lockTime: gw.lockTime });
 
     const winners = board
       .filter(p => p.perGameweek[gw.id]?.perfect)
@@ -1183,6 +1185,7 @@ function calcPraise() {
       const pot = running;
       claimed += pot;
       running  = 0;                       // pot emptied, starts again from zero
+      runningWeeks = [];
       weekly.push({
         gameweekId: gw.id, number: gw.number, label: gw.label,
         allocation, pot, winners,
@@ -1203,6 +1206,16 @@ function calcPraise() {
   // previous winnerless weeks, plus this week's own allocation.
   const currentPot = running + weeklyBase;
   const remaining  = Math.max(0, totalPot - claimed);
+
+  // A player can only win the slice of the pot from weeks they'd started
+  // playing in; after a payout the pot restarts and everyone joined is in full.
+  const eligibility = activeUsers.map(({ user, firstPlayed }) => {
+    const banked = runningWeeks
+      .filter(w => !w.lockTime || firstPlayed <= new Date(w.lockTime).getTime())
+      .reduce((sum, w) => sum + w.allocation, 0);
+    return { id: user.id, name: user.name, displayName: user.displayName,
+             amount: banked + weeklyBase };
+  });
 
   // Whatever is never won weekly is split at the end of the season.
   const splits    = gws.praise?.seasonEnd || [];
@@ -1225,6 +1238,7 @@ function calcPraise() {
     seasonWeeks, playerCount, weeklyBase,
     totalPot, claimed, remaining,
     currentPot,
+    eligibility,
     weekly,
     seasonEnd
   };

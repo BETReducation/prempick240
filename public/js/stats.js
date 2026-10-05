@@ -100,6 +100,8 @@ function renderPraise(praise, board) {
      </div>`;
 
   const mine = me ? tally(me) : null;
+  const myElig = (praise.eligibility || []).find(e => e.id === userId);
+  const reduced = (praise.eligibility || []).filter(e => e.amount < praise.currentPot);
 
   el('praiseSummary').innerHTML = `
     ${me ? `
@@ -108,6 +110,7 @@ function renderPraise(praise, board) {
         ${tile(pts(mine.correct), 'Correct predictions')}
         ${tile(mine.rate === null ? '—' : mine.rate + '%', 'Success rate')}
         ${tile(pts(myJackpots), 'Jackpots won')}
+        ${tile(myElig ? pts(myElig.amount) : '—', 'Jackpot eligibility')}
       </div>
     ` : `
       <p class="subsection-title">Your stats</p>
@@ -118,7 +121,7 @@ function renderPraise(praise, board) {
     <div class="stat-row">
       ${tile(allRate === null ? '—' : allRate + '%', 'Correct predictions')}
       ${tile(pts(jackpotsWon), 'Jackpots won')}
-      ${tile(pts(praise.currentPot), 'Current Jackpot', ' highlight')}
+      ${tile(pts(praise.currentPot) + (reduced.length ? `<span class="stat-sub">${reduced.map(e => `${esc(e.displayName || e.name)} ${pts(e.amount)}`).join(' · ')}</span>` : ''), 'Current Jackpot', ' highlight')}
     </div>`;
 
   el('praiseWeekly').innerHTML = praise.weekly.length ? `

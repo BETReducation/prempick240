@@ -1933,6 +1933,13 @@ footer span {
   color: var(--accent);
   line-height: 1.1;
 }
+.stat-tile .stat-sub {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: normal;
+}
 .stat-tile .stat-label {
   font-size: 11px;
   letter-spacing: 0.04em;
