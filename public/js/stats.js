@@ -44,16 +44,19 @@ function renderFormGuide(board, gws) {
 
 // Manager Of The Week: whoever called the most results correct in a single
 // completed gameweek, ties shared — a compact strip of the last few weeks.
-function renderMotw(board, gws) {
+function motwRows(board, gws) {
   const played = gws.gameweeks.filter(g => g.complete).sort((a, b) => b.number - a.number);
-  const rows = played.map(gw => {
+  return played.map(gw => {
     const scores = board.map(p => p.perGameweek[gw.id]?.resultPoints ?? -1);
     const max = Math.max(...scores, 0);
     if (max <= 0) return null;
     const winners = board.filter(p => (p.perGameweek[gw.id]?.resultPoints ?? -1) === max);
     return { gw, winners, max };
   }).filter(Boolean);
+}
 
+function renderMotw(board, gws) {
+  const rows = motwRows(board, gws);
   const row = ({ gw, winners, max }) => `
         <div class="praise-row won">
           <span class="praise-gw">${esc(gw.label || 'Week ' + gw.number)}</span>
@@ -73,7 +76,7 @@ function renderMotw(board, gws) {
     </details>` : ''}` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 }
 
-function renderPraise(praise, board) {
+function renderPraise(praise, board, gws) {
   const { userId } = Session.load();
 
   // Correct results over every prediction made on a fixture that has been
@@ -89,6 +92,8 @@ function renderPraise(praise, board) {
   const myJackpots = me
     ? praise.weekly.filter(w => w.winners.some(x => x.id === userId)).length
     : 0;
+
+  const myMotw = motwRows(board || [], gws).filter(r => r.winners.some(x => x.id === userId)).length;
 
   let allCorrect = 0, allPredicted = 0;
   (board || []).forEach(p => {
@@ -117,6 +122,7 @@ function renderPraise(praise, board) {
         ${tile(mine.rate === null ? '—' : mine.rate + '%', 'Success rate')}
         ${tile(pts(myJackpots), 'Jackpots won')}
         ${tile(myElig ? pts(myElig.amount) : '—', 'Jackpot eligibility')}
+        ${tile(pts(myMotw), 'Manager of the Week wins')}
       </div>
     ` : `
       <p class="subsection-title">Your stats</p>
@@ -245,7 +251,7 @@ async function init() {
 
     renderFormGuide(board, gws);
     renderMotw(board, gws);
-    renderPraise(praise, board);
+    renderPraise(praise, board, gws);
     fillRecordSelect();
     renderRecords();
     el('recordGw').addEventListener('change', renderRecords);
