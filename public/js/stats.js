@@ -223,7 +223,7 @@ function renderRecords() {
                 const r = STATS_RESULTS[m.id];
                 return `<td class="col-fx">${r && r.played ? `${r.home}–${r.away}` : '—'}</td>`;
               }).join('')}
-              <td class="col-pts"></td><td class="col-pts"></td>
+              <td class="col-pts"></td><td class="col-pts strong">${rows.reduce((n, p) => n + p.exact, 0)}</td>
             </tr>` : ''}
         </tbody>
       </table>
