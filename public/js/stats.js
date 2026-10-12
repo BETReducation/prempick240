@@ -52,19 +52,25 @@ function renderMotw(board, gws) {
     if (max <= 0) return null;
     const winners = board.filter(p => (p.perGameweek[gw.id]?.resultPoints ?? -1) === max);
     return { gw, winners, max };
-  }).filter(Boolean).slice(0, 6);
+  }).filter(Boolean);
 
-  el('motwList').innerHTML = rows.length ? `
-    <div class="praise-list">
-      ${rows.map(({ gw, winners, max }) => `
+  const row = ({ gw, winners, max }) => `
         <div class="praise-row won">
           <span class="praise-gw">${esc(gw.label || 'Week ' + gw.number)}</span>
           <span class="praise-winners">
             ${winners.map(x => `<span class="winner-chip"><i class="fa-solid fa-star"></i> ${esc(x.displayName || x.name)}</span>`).join('')}
           </span>
           <span class="praise-amount">${max}/6 correct</span>
-        </div>`).join('')}
-    </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
+        </div>`;
+  const older = rows.slice(3);
+
+  el('motwList').innerHTML = rows.length ? `
+    <div class="praise-list">${rows.slice(0, 3).map(row).join('')}</div>
+    ${older.length ? `
+    <details class="cup-schedule-details" style="margin-top:12px">
+      <summary>Earlier weeks (${older.length})</summary>
+      <div class="praise-list">${older.map(row).join('')}</div>
+    </details>` : ''}` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';
 }
 
 function renderPraise(praise, board) {
