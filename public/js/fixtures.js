@@ -35,17 +35,6 @@ function fmtKickoffTime(m) {
   });
 }
 
-// Players see fixtures in kick-off order regardless of how admin entered
-// them. This is display-only — a sorted copy, never the stored array — so
-// it can't disturb the id <-> position relationship the admin Fixtures
-// editor relies on when it resaves a week.
-function sortedMatches(gw) {
-  const when = m => m.kickoff ? new Date(m.kickoff).getTime()
-    : m.date ? new Date(m.date + 'T12:00:00Z').getTime()
-    : Infinity;
-  return [...gw.matches].sort((a, b) => when(a) - when(b));
-}
-
 function el(id) { return document.getElementById(id); }
 
 function fmtLock(iso) {
@@ -156,7 +145,7 @@ function renderFixtures(gw) {
 
   el('fixtureList').innerHTML = `
     <div class="fixture-grid">
-      ${sortedMatches(gw).map((m, i) => {
+      ${gw.matches.map((m, i) => {
         const pred = MY_PREDS[m.id] || {};
         return `
         <div class="fixture-card">

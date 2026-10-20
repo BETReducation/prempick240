@@ -287,6 +287,16 @@ async function saveGameweek() {
     };
   }).filter(m => m.home && m.away);
 
+  // Players see fixtures in the order listed here, so a fixture that kicks
+  // off earlier than the one above it is almost always a typo (wrong day or
+  // year) or a misplaced row.
+  for (let i = 1; i < matches.length; i++) {
+    const prev = matches[i - 1], cur = matches[i];
+    if (prev.kickoff && cur.kickoff && cur.kickoff < prev.kickoff &&
+        !confirm(`${cur.home} v ${cur.away} (${fmtUk(cur.kickoff)}) is listed after ${prev.home} v ${prev.away} (${fmtUk(prev.kickoff)}) but kicks off earlier. Players see fixtures in the order listed here, first game at the top. Save anyway?`)) return;
+    if (prev.kickoff && cur.kickoff && cur.kickoff < prev.kickoff) break;
+  }
+
   if (matches.length !== 6 &&
       !confirm(`You've filled in ${matches.length} fixtures, not 6. A week needs all six for anyone to win praise. Save anyway?`)) return;
 

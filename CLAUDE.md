@@ -226,14 +226,13 @@ reflects it.
 Before a week locks, `/api/predictions` **omits** other players' picks for that
 week. Don't remove that filter; it's what stops players copying each other.
 
-Players see a week's fixtures in kick-off order, not entry order — `fixtures.js`
-sorts a display-only copy (`sortedMatches()`) before rendering the fixture list
-and the "everyone's predictions" grid. The stored `gameweeks.json` order is left
-alone: the admin Fixtures editor relies on array position to assign match ids
-(`${gwId}-m${i+1}`) on save, so re-sorting the stored array would silently
-reassign ids already tied to existing predictions/results. If you need
-chronological order somewhere else (admin Records, Excel), sort a copy there
-too rather than touching the stored array.
+Players see a week's fixtures in the order admin entered them (stored array
+order). `saveGameweek()` in `admin.js` confirms before saving if a fixture
+kicks off earlier than the one above it, which catches wrong-year/day typos
+and misplaced rows. Don't re-sort on the player side: a mistyped date would
+silently reorder the list. Match ids (`${gwId}-m${i+1}`) are assigned by array
+position on save, so never reorder the stored array of a week that already
+has predictions.
 
 ## PP Cup eligibility cutoff
 
