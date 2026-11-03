@@ -233,7 +233,7 @@ function renderFixtureEditor(gw) {
         <span>Kick-off (UK)</span>
       </div>
       ${matches.map((m, i) => `
-        <div class="admin-row edit" data-i="${i}">
+        <div class="admin-row edit" data-i="${i}" data-mid="${esc(m.id || '')}">
           <select class="fx-comp" data-i="${i}">
             ${COMPS.map(c => `<option value="${c}" ${m.comp === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
@@ -275,6 +275,7 @@ async function saveGameweek() {
   const matches = rows.map(r => {
     const i = r.dataset.i;
     return {
+      id: r.dataset.mid || '',
       comp: el('fixtureRows').querySelector(`.fx-comp[data-i="${i}"]`).value,
       home: el('fixtureRows').querySelector(`.fx-home[data-i="${i}"]`).value.trim(),
       away: el('fixtureRows').querySelector(`.fx-away[data-i="${i}"]`).value.trim(),
@@ -287,15 +288,11 @@ async function saveGameweek() {
     };
   }).filter(m => m.home && m.away);
 
-  // Players see fixtures in the order listed here, so a fixture that kicks
-  // off earlier than the one above it is almost always a typo (wrong day or
-  // year) or a misplaced row.
-  for (let i = 1; i < matches.length; i++) {
-    const prev = matches[i - 1], cur = matches[i];
-    if (prev.kickoff && cur.kickoff && cur.kickoff < prev.kickoff &&
-        !confirm(`${cur.home} v ${cur.away} (${fmtUk(cur.kickoff)}) is listed after ${prev.home} v ${prev.away} (${fmtUk(prev.kickoff)}) but kicks off earlier. Players see fixtures in the order listed here, first game at the top. Save anyway?`)) return;
-    if (prev.kickoff && cur.kickoff && cur.kickoff < prev.kickoff) break;
-  }
+  // The server lists fixtures first kick-off first, so a stray year or day
+  // would just sort to the top or bottom. Catch it here instead.
+  const ko = matches.map(m => m.kickoff).filter(Boolean).sort();
+  if (ko.length > 1 && new Date(ko.at(-1)) - new Date(ko[0]) > 6 * 864e5 &&
+      !confirm(`Kick-offs run from ${fmtUk(ko[0])} to ${fmtUk(ko.at(-1))}, more than a week apart. Probably a typo in the date. Save anyway?`)) return;
 
   if (matches.length !== 6 &&
       !confirm(`You've filled in ${matches.length} fixtures, not 6. A week needs all six for anyone to win praise. Save anyway?`)) return;
@@ -317,7 +314,17 @@ async function saveGameweek() {
   const payload = {
     id, number, label: label || `Gameweek ${number}`,
     lockTime,
-    matches: matches.map((m, i) => ({ ...m, id: `${id}-m${i + 1}` })),
+    // Keep each fixture's existing id; only new rows get a fresh one.
+    matches: (() => {
+      const used = new Set(matches.map(m => m.id).filter(Boolean));
+      let n = 0;
+      return matches.map(m => {
+        if (m.id) return m;
+        while (used.has(`${id}-m${++n}`));
+        used.add(`${id}-m${n}`);
+        return { ...m, id: `${id}-m${n}` };
+      });
+    })(),
     ...(clash ? { allowNumberClash: true } : {})
   };
 

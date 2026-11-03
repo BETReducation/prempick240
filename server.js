@@ -359,8 +359,20 @@ setInterval(() => {
 
 // ── Gameweek helpers ──────────────────────────────────────────────────────────
 
+// Fixtures are always listed first kick-off first. Match ids are stored on
+// each match, not derived from position, so sorting can't detach predictions.
+// A week with any kick-off still blank is left in entry order.
+function sortByKickoff(matches) {
+  if (!matches.length || !matches.every(m => m.kickoff)) return matches;
+  return [...matches].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+}
+
 function readGameweeks() {
-  return readJSON(GAMEWEEKS_FILE, { gameweeks: [], praise: {} });
+  const gws = readJSON(GAMEWEEKS_FILE, { gameweeks: [], praise: {} });
+  for (const gw of gws.gameweeks || []) {
+    if (Array.isArray(gw.matches)) gw.matches = sortByKickoff(gw.matches);
+  }
+  return gws;
 }
 
 function findGameweek(gwId, gws) {
@@ -671,7 +683,7 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
     // value here (especially 0) would pin the week's allocation and stop it
     // tracking the registered-player count.
     ...(praise != null && !isNaN(Number(praise)) ? { praise: Number(praise) } : {}),
-    matches: clean
+    matches: sortByKickoff(clean)
   };
 
   const idx = gws.gameweeks.findIndex(g => g.id === next.id);
