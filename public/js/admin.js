@@ -186,8 +186,9 @@ async function renderPraisePreview() {
     ? `<div class="lock-notice"><i class="fa-solid fa-arrow-right"></i>
          <span>Nobody called all six. <strong>${wk.pot}</strong> praise rolls into next week.</span></div>`
     : `<div class="lock-notice locked"><i class="fa-solid fa-award"></i>
-         <span><strong>${wk.winners.map(w => esc(w.displayName || w.name)).join(', ')}</strong>
-         ${wk.winners.length > 1 ? `share ${wk.pot} praise (${Math.round(wk.sharePerWinner * 10) / 10} each)` : `wins ${wk.pot} praise`}.</span></div>`;
+         <span>
+         ${wk.winners.map(w => `${esc(w.displayName || w.name)} wins ${fmtP(w.share)}`).join(', ')} (pot ${fmtP(wk.pot)}).
+         ${wk.leftover > 0 ? `${fmtP(wk.leftover)} couldn't be taken by a late joiner and stays in the pot.` : ''}</span></div>`;
 }
 
 // ── Fixtures panel ────────────────────────────────────────────────────────────
@@ -805,6 +806,95 @@ function randomiseCupRound1() {
   el('cupStatus').className = 'save-status ok';
 }
 
+// ── Finances ──────────────────────────────────────────────────────────────────
+
+const fmtP = n => (Math.round(n * 100) / 100).toLocaleString('en-GB');
+let FIN = null;
+
+async function loadFinances() {
+  try { FIN = await adminFetch('/api/admin/finance'); renderFinances(); }
+  catch (e) { el('financeBody').innerHTML = `<p class="error-msg">${esc(e.message)}</p>`; }
+}
+
+async function finAction(path, opts) {
+  try { FIN = await adminFetch(path, opts); renderFinances(); }
+  catch (e) { alert(e.message); }
+}
+
+function renderFinances() {
+  const f = FIN;
+  const tile = (label, value, sub = '') => `
+    <div class="stat-tile"><div class="stat-label">${label}</div>
+    <div class="stat-value">${value}</div>${sub ? `<div class="section-note">${sub}</div>` : ''}</div>`;
+  const owing = f.players.filter(p => p.owing > 0);
+
+  el('financeBody').innerHTML = `
+    <p class="section-desc">Entry is ${f.entryFee} praise per player. Record payments as they arrive; wins and the pot are worked out from the results.</p>
+
+    <p class="subsection-title">1. Praise paid in</p>
+    <p><strong>${fmtP(f.paidIn)}</strong> praise received from ${f.players.filter(p => p.paid > 0).length} of ${f.players.length} players.</p>
+    <div class="admin-bar">
+      <select id="finPlayer">${f.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+      <input type="number" id="finAmount" min="1" step="1" value="${f.entryFee}" style="width:90px;">
+      <input type="text" id="finNote" maxlength="120" placeholder="Note (optional)" style="max-width:220px;">
+      <button class="btn btn-primary btn-sm" id="finAddBtn">Record payment</button>
+    </div>
+    <div class="table-scroll"><table class="admin-overview-table">
+      <thead><tr><th>Player</th><th>Paid in</th><th>Note</th><th></th></tr></thead>
+      <tbody>${f.payments.length ? f.payments.map(p => `
+        <tr><td>${esc(p.name)}</td><td>${fmtP(p.amount)}</td>
+        <td>${esc(p.note)}</td>
+        <td><button class="btn btn-outline btn-sm" data-delpay="${p.id}">Remove</button></td></tr>`).join('')
+        : '<tr><td colspan="4">No payments recorded yet.</td></tr>'}</tbody>
+    </table></div>
+
+    <p class="subsection-title" style="margin-top:1.75rem;">2. Players owing praise</p>
+    <p><strong>${fmtP(f.owingTotal)}</strong> praise outstanding.</p>
+    <div class="table-scroll"><table class="admin-overview-table">
+      <thead><tr><th>Player</th><th>Paid</th><th>Owes</th></tr></thead>
+      <tbody>${owing.length ? owing.map(p => `
+        <tr><td>${esc(p.name)}</td><td>${fmtP(p.paid)}</td><td>${fmtP(p.owing)}</td></tr>`).join('')
+        : '<tr><td colspan="3">Everyone is paid up.</td></tr>'}</tbody>
+    </table></div>
+
+    <p class="subsection-title" style="margin-top:1.75rem;">3. Total praise prize pot available</p>
+    <p><strong>${fmtP(f.potAvailable)}</strong> praise collected so far.</p>
+
+    <p class="subsection-title" style="margin-top:1.75rem;">4. Jackpot available to late joiners</p>
+    <p>This week's jackpot is <strong>${fmtP(f.currentPot)}</strong>. These players joined after part of it was banked, so can only win their share:</p>
+    <div class="table-scroll"><table class="admin-overview-table">
+      <thead><tr><th>Player</th><th>Can win</th></tr></thead>
+      <tbody>${f.lateJoiners.length ? f.lateJoiners.map(p => `
+        <tr><td>${esc(p.name)}</td><td>${fmtP(p.amount)}</td></tr>`).join('')
+        : '<tr><td colspan="2">No late joiners are capped this week.</td></tr>'}</tbody>
+    </table></div>
+
+    <p class="subsection-title" style="margin-top:1.75rem;">5. Paid out</p>
+    <p><strong>${fmtP(f.paidOut)}</strong> paid of ${fmtP(f.awarded)} won.</p>
+    <div class="table-scroll"><table class="admin-overview-table">
+      <thead><tr><th>Week</th><th>Winner</th><th>Won</th><th>Paid</th></tr></thead>
+      <tbody>${f.payoutsDue.length ? f.payoutsDue.map(p => `
+        <tr><td>${p.number}</td><td>${esc(p.name)}</td><td>${fmtP(p.amount)}</td>
+        <td><label><input type="checkbox" data-payout="${p.gameweekId}|${p.userId}" ${p.paid ? 'checked' : ''}> ${p.paid ? 'Paid' : 'Not yet'}</label></td></tr>`).join('')
+        : '<tr><td colspan="4">No weekly wins yet.</td></tr>'}</tbody>
+    </table></div>
+
+    <p class="subsection-title" style="margin-top:1.75rem;">6. Total prize pot remaining</p>
+    <p><strong>${fmtP(f.remaining)}</strong> praise (${fmtP(f.paidIn)} paid in − ${fmtP(f.paidOut)} paid out).</p>`;
+
+  el('finAddBtn').addEventListener('click', () => finAction('/api/admin/finance/payments', {
+    method: 'POST',
+    body: JSON.stringify({ userId: el('finPlayer').value, amount: el('finAmount').value, note: el('finNote').value })
+  }));
+  el('financeBody').querySelectorAll('[data-delpay]').forEach(b => b.addEventListener('click', () => {
+    if (confirm('Remove this payment?')) finAction('/api/admin/finance/payments/' + b.dataset.delpay, { method: 'DELETE' });
+  }));
+  el('financeBody').querySelectorAll('[data-payout]').forEach(c => c.addEventListener('change', () => {
+    const [gameweekId, userId] = c.dataset.payout.split('|');
+    finAction('/api/admin/finance/payouts', { method: 'POST', body: JSON.stringify({ gameweekId, userId, paid: c.checked }) });
+  }));
+}
+
 async function boot() {
   el('loadingState').style.display = 'none';
   el('adminDenied').style.display  = 'none';
@@ -820,6 +910,8 @@ async function boot() {
       el('panel-records').style.display  = b.dataset.panel === 'records'  ? '' : 'none';
       el('panel-entries').style.display  = b.dataset.panel === 'entries'  ? '' : 'none';
       el('panel-cup').style.display          = b.dataset.panel === 'cup'          ? '' : 'none';
+      el('panel-finances').style.display = b.dataset.panel === 'finances' ? '' : 'none';
+      if (b.dataset.panel === 'finances') loadFinances();
     }));
 
   el('recordGw').addEventListener('change', renderRecords);

@@ -34,6 +34,7 @@ const SESSIONS_FILE     = path.join(PERSISTENT_DIR, 'sessions.json');
 const LEADERBOARD_PREV_FILE  = path.join(PERSISTENT_DIR, 'leaderboard-prev.json');
 const POSITION_HISTORY_FILE  = path.join(PERSISTENT_DIR, 'position-history.json');
 const CUP_FILE                = path.join(PERSISTENT_DIR, 'cup.json');
+const FINANCE_FILE            = path.join(PERSISTENT_DIR, 'finance.json');
 const EXCEL_FILE               = path.join(PERSISTENT_DIR, 'PremPick240-League.xlsx');
 
 const ADMIN_EMAIL = 'gbyatt@gmail.com';
@@ -1169,6 +1170,9 @@ function calcPraise() {
   const weeklyBase   = playerCount;
   const totalPot     = playerCount * seasonWeeks;
 
+  const firstPlayedById = {};
+  activeUsers.forEach(u => { firstPlayedById[u.user.id] = u.firstPlayed; });
+
   const playersAsOf = (iso) => {
     if (!iso) return playerCount;
     const cutoff = new Date(iso).getTime();
@@ -1195,13 +1199,38 @@ function calcPraise() {
 
     if (winners.length) {
       const pot = running;
-      claimed += pot;
-      running  = 0;                       // pot emptied, starts again from zero
-      runningWeeks = [];
+      // A winner can only take the slice of the pot from weeks they'd started
+      // playing in. Split equally, but cap each winner at their own slice and
+      // hand what a capped winner can't take to the uncapped ones.
+      const caps = winners.map(w => {
+        const fp = firstPlayedById[w.id];
+        return runningWeeks
+          .filter(rw => !rw.lockTime || fp == null || fp <= new Date(rw.lockTime).getTime())
+          .reduce((sum, rw) => sum + rw.allocation, 0);
+      });
+      const shares = new Array(winners.length).fill(0);
+      let left = pot;
+      let open = winners.map((_, i) => i);
+      while (open.length && left > 1e-9) {
+        const each = left / open.length;
+        const capped = open.filter(i => caps[i] - shares[i] <= each + 1e-9);
+        if (!capped.length) { open.forEach(i => { shares[i] += each; }); left = 0; break; }
+        capped.forEach(i => { left -= caps[i] - shares[i]; shares[i] = caps[i]; });
+        open = open.filter(i => !capped.includes(i));
+      }
+      winners.forEach((w, i) => { w.share = Math.round(shares[i] * 100) / 100; });
+      let leftover = Math.round((pot - winners.reduce((sum, w) => sum + w.share, 0)) * 100) / 100;
+      // Penny drift from splitting three ways isn't a real leftover.
+      if (Math.abs(leftover) < 0.05) { winners[winners.length - 1].share = Math.round((winners[winners.length - 1].share + leftover) * 100) / 100; leftover = 0; }
+      const paidOut  = winners.reduce((sum, w) => sum + w.share, 0);
+      claimed += paidOut;
+      running  = leftover;                // anything a late joiner couldn't take stays in the pot
+      runningWeeks = leftover > 0 ? [{ allocation: leftover, lockTime: null }] : [];
       weekly.push({
         gameweekId: gw.id, number: gw.number, label: gw.label,
         allocation, pot, winners,
-        sharePerWinner: pot / winners.length,
+        sharePerWinner: paidOut / winners.length,
+        leftover,
         rolledOver: false
       });
     } else {
@@ -1257,6 +1286,102 @@ function calcPraise() {
 }
 
 app.get('/api/praise', (req, res) => res.json(calcPraise()));
+
+// ── Finances (admin) ───────────────────────────────────────────────────────────
+// Praise paid in is a ledger the admin keeps by hand; everything else is
+// derived from calcPraise() so it can't drift from the real results. Only
+// two things are stored: payments received, and which weekly wins have been
+// paid out.
+
+function readFinance() {
+  const f = readJSON(FINANCE_FILE, {});
+  return { payments: f.payments || [], payouts: f.payouts || {} };
+}
+
+function calcFinance() {
+  const praise  = calcPraise();
+  const fin     = readFinance();
+  const users   = readJSON(PREDICTIONS_FILE, { users: [] }).users;
+  const entry   = praise.seasonWeeks;
+  const nameOf  = (u) => u.displayName || u.name;
+
+  const paidBy = {};
+  fin.payments.forEach(p => { paidBy[p.userId] = (paidBy[p.userId] || 0) + p.amount; });
+
+  const activeIds = new Set(praise.eligibility.map(e => e.id));
+  const players = users
+    .filter(u => activeIds.has(u.id) || paidBy[u.id])
+    .map(u => {
+      const paid = paidBy[u.id] || 0;
+      return { id: u.id, name: nameOf(u), paid, owing: Math.max(0, entry - paid) };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const paidIn = players.reduce((s, p) => s + p.paid, 0);
+
+  const payoutsDue = [];
+  praise.weekly.filter(w => w.winners.length).forEach(w =>
+    w.winners.forEach(wn => {
+      const key = `${w.gameweekId}:${wn.id}`;
+      payoutsDue.push({
+        key, gameweekId: w.gameweekId, number: w.number, userId: wn.id,
+        name: wn.displayName || wn.name, amount: wn.share,
+        paid: !!fin.payouts[key], paidAt: fin.payouts[key]?.paidAt || null
+      });
+    }));
+  const paidOut = payoutsDue.filter(p => p.paid).reduce((s, p) => s + p.amount, 0);
+  const awarded = payoutsDue.reduce((s, p) => s + p.amount, 0);
+
+  const lateJoiners = praise.eligibility
+    .filter(e => e.amount < praise.currentPot)
+    .map(e => ({ id: e.id, name: e.displayName || e.name, amount: e.amount }));
+
+  return {
+    entryFee: entry, players, paidIn,
+    owingTotal: players.reduce((s, p) => s + p.owing, 0),
+    potAvailable: paidIn,
+    currentPot: praise.currentPot,
+    lateJoiners,
+    payoutsDue, paidOut, awarded,
+    remaining: paidIn - paidOut,
+    payments: fin.payments.map(p => ({ ...p, name: nameOf(users.find(u => u.id === p.userId) || { name: '?' }) }))
+  };
+}
+
+app.get('/api/admin/finance', requireAdmin, (req, res) => res.json(calcFinance()));
+
+app.post('/api/admin/finance/payments', requireAdmin, (req, res) => {
+  const { userId, note } = req.body;
+  const amount = Number(req.body.amount);
+  const users = readJSON(PREDICTIONS_FILE, { users: [] }).users;
+  if (!users.some(u => u.id === userId)) return res.status(400).json({ error: 'Unknown player' });
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Amount must be above 0' });
+  const fin = readFinance();
+  fin.payments.push({
+    id: crypto.randomUUID(), userId, amount,
+    note: String(note || '').slice(0, 120), date: new Date().toISOString()
+  });
+  writeJSON(FINANCE_FILE, fin);
+  res.json(calcFinance());
+});
+
+app.delete('/api/admin/finance/payments/:id', requireAdmin, (req, res) => {
+  const fin = readFinance();
+  fin.payments = fin.payments.filter(p => p.id !== req.params.id);
+  writeJSON(FINANCE_FILE, fin);
+  res.json(calcFinance());
+});
+
+app.post('/api/admin/finance/payouts', requireAdmin, (req, res) => {
+  const { gameweekId, userId, paid } = req.body;
+  const key = `${gameweekId}:${userId}`;
+  if (!calcFinance().payoutsDue.some(p => p.key === key)) return res.status(400).json({ error: 'No such win' });
+  const fin = readFinance();
+  if (paid) fin.payouts[key] = { paidAt: new Date().toISOString() };
+  else delete fin.payouts[key];
+  writeJSON(FINANCE_FILE, fin);
+  res.json(calcFinance());
+});
 
 // ── Position History ───────────────────────────────────────────────────────────
 //
