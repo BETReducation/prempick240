@@ -1295,7 +1295,7 @@ app.get('/api/praise', (req, res) => res.json(calcPraise()));
 
 function readFinance() {
   const f = readJSON(FINANCE_FILE, {});
-  return { payments: f.payments || [], payouts: f.payouts || {} };
+  return { payments: f.payments || [], payouts: f.payouts || {}, plans: f.plans || {} };
 }
 
 function calcFinance() {
@@ -1308,12 +1308,26 @@ function calcFinance() {
   const paidBy = {};
   fin.payments.forEach(p => { paidBy[p.userId] = (paidBy[p.userId] || 0) + p.amount; });
 
+  // Weekly payers owe 1 praise per gameweek from their first one through the
+  // active one, so their fee grows each week without anyone editing it.
+  const gwList = (readGameweeks().gameweeks || []).slice().sort((a, b) => a.number - b.number);
+  const cur = currentGameweek({ gameweeks: gwList });
+  const weeksJoined = (u) => {
+    const first = gwList.find(g => (g.matches || []).some(m => (u.predictions || {})[m.id]));
+    if (!first || !cur) return 0;
+    return gwList.filter(g => g.number >= first.number && g.number <= cur.number).length;
+  };
+
   const activeIds = new Set(praise.eligibility.map(e => e.id));
   const players = users
     .filter(u => activeIds.has(u.id) || paidBy[u.id])
     .map(u => {
+      const plan = fin.plans[u.id] || {};
+      const weekly = plan.mode === 'weekly';
+      const weeks = weekly ? weeksJoined(u) : null;
+      const fee = weekly ? weeks : (Number.isFinite(plan.fee) ? plan.fee : entry);
       const paid = paidBy[u.id] || 0;
-      return { id: u.id, name: nameOf(u), paid, owing: Math.max(0, entry - paid) };
+      return { id: u.id, name: nameOf(u), mode: weekly ? 'weekly' : 'season', weeks, fee, paid, owing: Math.max(0, fee - paid) };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1361,6 +1375,29 @@ app.post('/api/admin/finance/payments', requireAdmin, (req, res) => {
     id: crypto.randomUUID(), userId, amount,
     note: String(note || '').slice(0, 120), date: new Date().toISOString()
   });
+  writeJSON(FINANCE_FILE, fin);
+  res.json(calcFinance());
+});
+
+app.post('/api/admin/finance/plan', requireAdmin, (req, res) => {
+  const { userId, mode } = req.body;
+  const fee = req.body.fee === '' || req.body.fee == null ? null : Number(req.body.fee);
+  const users = readJSON(PREDICTIONS_FILE, { users: [] }).users;
+  if (!users.some(u => u.id === userId)) return res.status(400).json({ error: 'Unknown player' });
+  if (fee !== null && (!Number.isFinite(fee) || fee < 0)) return res.status(400).json({ error: 'Bad fee' });
+  const fin = readFinance();
+  fin.plans[userId] = { mode: mode === 'weekly' ? 'weekly' : 'season', fee: mode === 'weekly' ? null : fee };
+  writeJSON(FINANCE_FILE, fin);
+  res.json(calcFinance());
+});
+
+app.post('/api/admin/finance/payments/:id', requireAdmin, (req, res) => {
+  const amount = Number(req.body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Amount must be above 0' });
+  const fin = readFinance();
+  const p = fin.payments.find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'No such payment' });
+  p.amount = amount;
   writeJSON(FINANCE_FILE, fin);
   res.json(calcFinance());
 });

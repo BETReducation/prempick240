@@ -829,7 +829,7 @@ function renderFinances() {
   const owing = f.players.filter(p => p.owing > 0);
 
   el('financeBody').innerHTML = `
-    <p class="section-desc">Entry is ${f.entryFee} praise per player. Record payments as they arrive; wins and the pot are worked out from the results.</p>
+    <p class="section-desc">Entry is ${f.entryFee} praise per player unless set otherwise below. Record payments as they arrive; wins and the pot are worked out from the results.</p>
 
     <p class="subsection-title">1. Praise paid in</p>
     <p><strong>${fmtP(f.paidIn)}</strong> praise received from ${f.players.filter(p => p.paid > 0).length} of ${f.players.length} players.</p>
@@ -844,17 +844,22 @@ function renderFinances() {
       <tbody>${f.payments.length ? f.payments.map(p => `
         <tr><td>${esc(p.name)}</td><td>${fmtP(p.amount)}</td>
         <td>${esc(p.note)}</td>
-        <td><button class="btn btn-outline btn-sm" data-delpay="${p.id}">Remove</button></td></tr>`).join('')
+        <td><button class="btn btn-outline btn-sm" data-editpay="${p.id}|${p.amount}">Edit</button>
+        <button class="btn btn-outline btn-sm" data-delpay="${p.id}">Remove</button></td></tr>`).join('')
         : '<tr><td colspan="4">No payments recorded yet.</td></tr>'}</tbody>
     </table></div>
 
     <p class="subsection-title" style="margin-top:1.75rem;">2. Players owing praise</p>
     <p><strong>${fmtP(f.owingTotal)}</strong> praise outstanding.</p>
     <div class="table-scroll"><table class="admin-overview-table">
-      <thead><tr><th>Player</th><th>Paid</th><th>Owes</th></tr></thead>
-      <tbody>${owing.length ? owing.map(p => `
-        <tr><td>${esc(p.name)}</td><td>${fmtP(p.paid)}</td><td>${fmtP(p.owing)}</td></tr>`).join('')
-        : '<tr><td colspan="3">Everyone is paid up.</td></tr>'}</tbody>
+      <thead><tr><th>Player</th><th>Plan</th><th>Fee</th><th>Paid</th><th>Owes</th></tr></thead>
+      <tbody>${f.players.map(p => `
+        <tr><td>${esc(p.name)}</td>
+        <td><select data-plan="${p.id}"><option value="season" ${p.mode === 'season' ? 'selected' : ''}>Season</option>
+            <option value="weekly" ${p.mode === 'weekly' ? 'selected' : ''}>1 per week</option></select></td>
+        <td>${p.mode === 'weekly' ? `${p.weeks} wks = ${fmtP(p.fee)}`
+              : `<input type="number" min="0" step="1" value="${p.fee}" data-fee="${p.id}" style="width:70px;">`}</td>
+        <td>${fmtP(p.paid)}</td><td>${p.owing > 0 ? fmtP(p.owing) : '✓'}</td></tr>`).join('')}</tbody>
     </table></div>
 
     <p class="subsection-title" style="margin-top:1.75rem;">3. Total praise prize pot available</p>
@@ -889,6 +894,17 @@ function renderFinances() {
   el('financeBody').querySelectorAll('[data-delpay]').forEach(b => b.addEventListener('click', () => {
     if (confirm('Remove this payment?')) finAction('/api/admin/finance/payments/' + b.dataset.delpay, { method: 'DELETE' });
   }));
+  el('financeBody').querySelectorAll('[data-editpay]').forEach(b => b.addEventListener('click', () => {
+    const [id, cur] = b.dataset.editpay.split('|');
+    const v = prompt('Correct amount:', cur);
+    if (v !== null && v.trim() !== '') finAction('/api/admin/finance/payments/' + id, { method: 'POST', body: JSON.stringify({ amount: v }) });
+  }));
+  const setPlan = (id, mode, fee) => finAction('/api/admin/finance/plan', { method: 'POST', body: JSON.stringify({ userId: id, mode, fee }) });
+  el('financeBody').querySelectorAll('[data-plan]').forEach(sel => sel.addEventListener('change', () => {
+    const fi = el('financeBody').querySelector(`[data-fee="${sel.dataset.plan}"]`);
+    setPlan(sel.dataset.plan, sel.value, fi ? fi.value : null);
+  }));
+  el('financeBody').querySelectorAll('[data-fee]').forEach(inp => inp.addEventListener('change', () => setPlan(inp.dataset.fee, 'season', inp.value)));
   el('financeBody').querySelectorAll('[data-payout]').forEach(c => c.addEventListener('change', () => {
     const [gameweekId, userId] = c.dataset.payout.split('|');
     finAction('/api/admin/finance/payouts', { method: 'POST', body: JSON.stringify({ gameweekId, userId, paid: c.checked }) });
