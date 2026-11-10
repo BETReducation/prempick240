@@ -180,7 +180,11 @@ async function renderPraisePreview() {
 
   const praise = await API.praise();
   const wk = praise.weekly.find(w => w.gameweekId === gw.id);
-  if (!wk) { box.innerHTML = ''; return; }
+  if (!wk) {
+    box.innerHTML = gw.inJackpot === false
+      ? `<p class="section-note">This week isn't in the praise jackpot. Scores still count everywhere else.</p>` : '';
+    return;
+  }
 
   box.innerHTML = wk.rolledOver
     ? `<div class="lock-notice"><i class="fa-solid fa-arrow-right"></i>
@@ -219,6 +223,7 @@ function renderFixtureEditor(gw) {
   el('gwNumber').value   = gw.number ?? '';
   el('gwLabel').value    = gw.label ?? '';
   el('saveGwBtn').textContent = 'Save Gameweek';
+  el('gwJackpot').value = typeof gw.jackpot === 'boolean' ? (gw.jackpot ? 'yes' : 'no') : 'auto';
 
   const matches = (gw.matches && gw.matches.length)
     ? gw.matches
@@ -315,6 +320,7 @@ async function saveGameweek() {
   const payload = {
     id, number, label: label || `Gameweek ${number}`,
     lockTime,
+    jackpot: { auto: null, yes: true, no: false }[el('gwJackpot').value],
     // Keep each fixture's existing id; only new rows get a fresh one.
     matches: (() => {
       const used = new Set(matches.map(m => m.id).filter(Boolean));

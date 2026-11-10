@@ -414,6 +414,18 @@ function currentGameweek(gws) {
   return list.find(gw => Date.now() < gameweekResetTime(gw)) || list[list.length - 1] || null;
 }
 
+// Whether a week feeds the praise jackpot. Only the jackpot cares: scoring,
+// the ranking table, Cup and International all still count every fixture.
+// An explicit `jackpot` boolean on the gameweek wins (that's how the early
+// international weeks stay in); otherwise a week is in if every fixture is
+// PL or CH, so an INTL/CUP fixture takes the whole week out.
+function gwInJackpot(gw) {
+  if (!gw) return false;
+  if (typeof gw.jackpot === 'boolean') return gw.jackpot;
+  const ms = gw.matches || [];
+  return ms.length > 0 && ms.every(m => (m.comp || 'PL') === 'PL' || m.comp === 'CH');
+}
+
 function gameweekComplete(gw, results) {
   const matches = gw.matches || [];
   return matches.length > 0 && matches.every(m => results[m.id] && results[m.id].played);
@@ -601,6 +613,7 @@ app.get('/api/gameweeks', (req, res) => {
     currentGameweekId: currentGameweek(gws)?.id || null,
     gameweeks: visible.map(gw => ({
       ...gw,
+      inJackpot: gwInJackpot(gw),
       locked:   isGameweekLocked(gw),
       complete: gameweekComplete(gw, results),
       matches:  (gw.matches || []).map(m => ({ ...m, locked: isMatchLocked(m.id, gws) }))
@@ -623,7 +636,7 @@ app.get('/api/lock-status', (req, res) => {
 // ── Admin: create / update / delete a gameweek ─────────────────────────────────
 
 app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
-  const { id, number, label, lockTime, praise, matches, allowNumberClash } = req.body;
+  const { id, number, label, lockTime, praise, jackpot, matches, allowNumberClash } = req.body;
   if (!id || !Array.isArray(matches) || matches.length === 0)
     return res.status(400).json({ error: 'id and a non-empty matches array are required' });
   if (lockTime && isNaN(new Date(lockTime).getTime()))
@@ -686,6 +699,13 @@ app.post('/api/admin/gameweeks', requireAdmin, (req, res) => {
     ...(praise != null && !isNaN(Number(praise)) ? { praise: Number(praise) } : {}),
     matches: sortByKickoff(clean)
   };
+  // Fields the admin form doesn't send must survive a save, or editing a
+  // fixture would silently drop them. jackpot: undefined = keep, null = back
+  // to automatic, boolean = set.
+  const prev = gws.gameweeks.find(g => g.id === gwId);
+  if (praise === undefined && prev?.praise != null) next.praise = prev.praise;
+  const jp = jackpot === undefined ? prev?.jackpot : jackpot;
+  if (typeof jp === 'boolean') next.jackpot = jp;
 
   const idx = gws.gameweeks.findIndex(g => g.id === next.id);
   if (idx >= 0) gws.gameweeks[idx] = next; else gws.gameweeks.push(next);
@@ -1185,6 +1205,7 @@ function calcPraise() {
   let claimed = 0;
 
   for (const gw of gws.gameweeks || []) {
+    if (!gwInJackpot(gw)) continue;   // no allocation, no winners; scores still count elsewhere
     if (!gameweekPraiseResolved(gw, results, board)) continue;
 
     // A week's own allocation may be overridden per gameweek; otherwise it is
@@ -1245,7 +1266,9 @@ function calcPraise() {
 
   // What this week's winners would actually share: everything banked by
   // previous winnerless weeks, plus this week's own allocation.
-  const currentPot = running + weeklyBase;
+  // If the active week isn't a jackpot week it adds nothing to what's on offer.
+  const nextBase   = gwInJackpot(currentGameweek(gws)) ? weeklyBase : 0;
+  const currentPot = running + nextBase;
   const remaining  = Math.max(0, totalPot - claimed);
 
   // A player can only win the slice of the pot from weeks they'd started

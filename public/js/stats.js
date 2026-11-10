@@ -148,8 +148,8 @@ function renderPraise(praise, board, gws) {
           </span>
           <span class="praise-amount">${
             w.rolledOver           ? `${pts(w.pot)} carried over`
-            : w.winners.length > 1 ? `${pts(w.sharePerWinner)} each (${pts(w.pot)})`
-            :                        pts(w.pot)
+            : w.winners.length > 1 ? `${w.winners.map(x => pts(x.share)).join(' / ')} (${pts(w.pot)})`
+            :                        pts(w.winners[0].share)
           }</span>
         </div>`).join('')}
     </div>` : '<p class="empty wide-empty">No completed gameweeks yet.</p>';

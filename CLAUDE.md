@@ -90,7 +90,15 @@ and `calcPraise()` both loop over every match in every gameweek with no
 gameweek's results count toward the main table and weekly jackpot exactly
 like any other week; the Cup/International pages are just a second read of
 the same `resultPoints`, never a separate score. Don't add a `comp` check
-into either function — that would silently split scoring in two.
+into `calcLeaderboard()` — that would silently split scoring in two.
+
+The one exception is the praise jackpot: `calcPraise()` skips any week where
+`gwInJackpot(gw)` is false (no allocation, no winners, not listed). A week is
+in by default when every fixture is `PL` or `CH`; one `CUP`/`INTL` fixture
+takes the whole week out. An explicit `jackpot: true/false` on the gameweek
+overrides that (admin Fixtures → "Praise jackpot"), which is how the first
+two international weeks, paid for in the 40-week pot, stay in. Scores,
+Ranking, Cup and International are unaffected either way.
 
 ## Praise
 
