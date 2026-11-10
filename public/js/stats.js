@@ -114,6 +114,9 @@ function renderPraise(praise, board, gws) {
   const myElig = (praise.eligibility || []).find(e => e.id === userId);
   const reduced = (praise.eligibility || []).filter(e => e.amount < praise.currentPot);
 
+  const reducedNote = reduced.length
+    ? `<span class="stat-sub">${reduced.map(e => `${esc(e.displayName || e.name)} ${pts(e.amount)}`).join(' · ')}</span>` : '';
+
   el('praiseSummary').innerHTML = `
     ${me ? `
       <p class="subsection-title">Your stats</p>
@@ -133,7 +136,10 @@ function renderPraise(praise, board, gws) {
     <div class="stat-row">
       ${tile(allRate === null ? '—' : allRate + '%', 'Correct predictions')}
       ${tile(pts(jackpotsWon), 'Jackpots won')}
-      ${tile(pts(praise.currentPot) + (reduced.length ? `<span class="stat-sub">${reduced.map(e => `${esc(e.displayName || e.name)} ${pts(e.amount)}`).join(' · ')}</span>` : ''), 'Current Jackpot', ' highlight')}
+      ${praise.jackpotThisWeek
+        ? tile(pts(praise.currentPot) + reducedNote, 'Current Jackpot', ' highlight')
+        : `${tile('None' + `<span class="stat-sub" style="display:block;margin:4px 0 0;">Not available this week — ${esc(praise.offWeekReason)}</span>`, 'Current Jackpot')}
+           ${tile(pts(praise.currentPot) + reducedNote, 'Next Jackpot', ' highlight')}`}
     </div>`;
 
   el('seasonSplit').innerHTML = (praise.seasonEnd || []).map(x => `

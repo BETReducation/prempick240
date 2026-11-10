@@ -2716,3 +2716,18 @@ input.score-input:disabled { opacity: 0.5; }
 .split-pct { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 28px; line-height: 1; }
 .split-label { font-weight: 600; font-size: 13px; }
 .split-now { font-size: 12px; color: var(--muted); }
+
+/* Gameweek tabs scroll at every width; the spacers let the first and last
+   week still reach the middle of the strip. */
+#gwTabsWrap #gwTabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+@media (min-width: 721px) {
+  #gwTabsWrap #gwTabs, #jackpotNote { max-width: 760px; margin-left: auto; margin-right: auto; }
+}
+#gwTabsWrap #gwTabs::before,
+#gwTabsWrap #gwTabs::after { content: ''; flex: 0 0 40%; }
+#gwTabsWrap #gwTabs .tab-btn { flex-shrink: 0; white-space: nowrap; }
+#jackpotNote .lock-notice { margin-top: 10px; }

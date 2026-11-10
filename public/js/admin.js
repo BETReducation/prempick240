@@ -872,7 +872,7 @@ function renderFinances() {
     <p><strong>${fmtP(f.potAvailable)}</strong> praise collected so far.</p>
 
     <p class="subsection-title" style="margin-top:1.75rem;">4. Jackpot available to late joiners</p>
-    <p>This week's jackpot is <strong>${fmtP(f.currentPot)}</strong>. These players joined after part of it was banked, so can only win their share:</p>
+    <p>${f.jackpotThisWeek ? "This week's" : `No jackpot this week (${esc(f.offWeekReason)}). The next`} jackpot is <strong>${fmtP(f.currentPot)}</strong>. These players joined after part of it was banked, so can only win their share:</p>
     <div class="table-scroll"><table class="admin-overview-table">
       <thead><tr><th>Player</th><th>Can win</th></tr></thead>
       <tbody>${f.lateJoiners.length ? f.lateJoiners.map(p => `

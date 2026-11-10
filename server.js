@@ -1275,11 +1275,16 @@ function calcPraise() {
     }
   }
 
-  // What this week's winners would actually share: everything banked by
-  // previous winnerless weeks, plus this week's own allocation.
-  // If the active week isn't a jackpot week it adds nothing to what's on offer.
-  const nextBase   = gwInJackpot(currentGameweek(gws)) ? weeklyBase : 0;
-  const currentPot = running + nextBase;
+  // The jackpot on offer at the next jackpot week: everything banked by
+  // previous winnerless weeks plus one week's allocation. If the active week
+  // isn't a jackpot week (international, cup) nothing can be won right now,
+  // but this is still the figure players are playing towards.
+  const activeGw          = currentGameweek(gws);
+  const jackpotThisWeek   = gwInJackpot(activeGw);
+  const comps             = new Set((activeGw?.matches || []).map(m => m.comp));
+  const offWeekReason     = jackpotThisWeek ? null
+    : comps.has('INTL') ? 'international week' : comps.has('CUP') ? 'cup week' : 'not a jackpot week';
+  const currentPot = running + weeklyBase;
   const remaining  = Math.max(0, totalPot - claimed);
 
   // A player can only win the slice of the pot from weeks they'd started
@@ -1315,7 +1320,7 @@ function calcPraise() {
   return {
     seasonWeeks, playerCount, weeklyBase,
     totalPot, claimed, remaining,
-    currentPot,
+    currentPot, jackpotThisWeek, offWeekReason,
     eligibility,
     weekly,
     seasonEnd
@@ -1392,6 +1397,7 @@ function calcFinance() {
     owingTotal: players.reduce((s, p) => s + p.owing, 0),
     potAvailable: paidIn,
     currentPot: praise.currentPot,
+    jackpotThisWeek: praise.jackpotThisWeek, offWeekReason: praise.offWeekReason,
     lateJoiners,
     payoutsDue, paidOut, awarded,
     remaining: paidIn - paidOut,

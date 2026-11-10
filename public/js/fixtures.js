@@ -88,15 +88,22 @@ function renderTabs() {
       render();
     })
   );
-  // On mobile the strip scrolls horizontally and starts scrolled to the left,
-  // so the active gameweek's own tab can sit off-screen past week 1/2. Bring
-  // it into view without disturbing the rest of the page's scroll position.
+  // The strip scrolls; keep the selected week (the current one on load) in
+  // the middle of it, with earlier weeks tucked off to the left.
   const activeTab = wrap.querySelector('.tab-btn.active');
-  if (activeTab) activeTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (activeTab) wrap.scrollLeft = activeTab.offsetLeft - (wrap.clientWidth - activeTab.offsetWidth) / 2;
 }
 
 function renderBanner(gw) {
   const banner = el('lockBanner');
+  const note = el('jackpotNote');
+  if (note) {
+    const comps = new Set(gw.matches.map(m => m.comp));
+    const why = comps.has('INTL') ? 'an international week' : comps.has('CUP') ? 'a cup week' : 'not a jackpot week';
+    note.innerHTML = gw.inJackpot === false
+      ? `<div class="lock-notice"><i class="fa-solid fa-circle-info"></i>
+           <span>No praise jackpot this week — ${why}. Your scores still count in the Ranking.</span></div>` : '';
+  }
   const { userId } = Session.load();
 
   if (gw.locked) {
