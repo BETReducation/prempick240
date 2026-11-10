@@ -1147,6 +1147,17 @@ app.get('/api/week-record', (req, res) => {
 // Weeks nobody wins roll their allocation into the season-end pot, which is then
 // split by the percentages in gameweeks.json → praise.seasonEnd.
 
+// What happens to whatever the weekly jackpot never pays out. Fixed here, not
+// read from gameweeks.json: that file is only a first-boot seed in
+// production, so a change there would never reach the live site.
+const SEASON_END_SPLIT = [
+  { key: 'league1st', label: '1st in the table',      percent: 50 },
+  { key: 'league2nd', label: '2nd in the table',      percent: 10 },
+  { key: 'league3rd', label: '3rd in the table',      percent: 10 },
+  { key: 'mostExact', label: 'Most correct scores',   percent: 20 },
+  { key: 'cupWinner', label: 'PP Cup winner',         percent: 10 }
+];
+
 function calcPraise() {
   const gws     = readGameweeks();
   const results = readJSON(RESULTS_FILE, { results: {} }).results || {};
@@ -1282,7 +1293,9 @@ function calcPraise() {
   });
 
   // Whatever is never won weekly is split at the end of the season.
-  const splits    = gws.praise?.seasonEnd || [];
+  const splits    = SEASON_END_SPLIT;
+  const finalRound = (calcCup().rounds || []).filter(r => (r.ties || []).length).at(-1);
+  const finalTie   = finalRound && finalRound.ties.length === 1 ? finalRound.ties[0] : null;
   const mostExact = board.length ? Math.max(...board.map(p => p.scorePoints)) : 0;
 
   const seasonEnd = splits.map(s => {
@@ -1291,6 +1304,7 @@ function calcPraise() {
     else if (s.key === 'league2nd' && board[1]) candidates = [board[1]];
     else if (s.key === 'league3rd' && board[2]) candidates = [board[2]];
     else if (s.key === 'mostExact') candidates = board.filter(p => p.scorePoints === mostExact && mostExact > 0);
+    else if (s.key === 'cupWinner' && finalTie?.winner) candidates = board.filter(p => p.id === finalTie.winner);
     return {
       ...s,
       praise: Math.round(remaining * (s.percent / 100)),

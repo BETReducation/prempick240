@@ -136,6 +136,15 @@ function renderPraise(praise, board, gws) {
       ${tile(pts(praise.currentPot) + (reduced.length ? `<span class="stat-sub">${reduced.map(e => `${esc(e.displayName || e.name)} ${pts(e.amount)}`).join(' · ')}</span>` : ''), 'Current Jackpot', ' highlight')}
     </div>`;
 
+  el('seasonSplit').innerHTML = (praise.seasonEnd || []).map(x => `
+    <div class="split-card">
+      <span class="split-pct">${x.percent}%</span>
+      <span class="split-label">${esc(x.label)}</span>
+      <span class="split-now">${x.leaders.length
+        ? 'Currently ' + x.leaders.map(l => esc(l.displayName || l.name)).join(', ')
+        : 'Not decided yet'}</span>
+    </div>`).join('');
+
   el('praiseWeekly').innerHTML = praise.weekly.length ? `
     <div class="praise-list">
       ${praise.weekly.slice().reverse().map(w => `

@@ -120,8 +120,9 @@ So with 40 players the season pot is 1,600 and a standard week is worth 40.
 - `currentPot` in `/api/praise` is what this week's winners would share:
   everything banked plus this week's own allocation.
 - Whatever is never won weekly (`remaining = totalPot − claimed`) is split at
-  season end per `praise.seasonEnd` — 40/25/15 for the top three, 20% for most
-  exact scorelines.
+  season end per `SEASON_END_SPLIT` in `server.js` (not gameweeks.json, which
+  is only a first-boot seed): 50/10/10 for the top three, 20% most exact
+  scorelines, 10% PP Cup winner.
 
 A further side-competition prize could still take a slice of that 20% —
 add it as another `seasonEnd` entry, no code change. (This note originally
