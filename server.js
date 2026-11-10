@@ -1255,9 +1255,22 @@ function calcPraise() {
       // Penny drift from splitting three ways isn't a real leftover.
       if (Math.abs(leftover) < 0.05) { winners[winners.length - 1].share = Math.round((winners[winners.length - 1].share + leftover) * 100) / 100; leftover = 0; }
       const paidOut  = winners.reduce((sum, w) => sum + w.share, 0);
+
+      // The leftover is praise from specific weeks, so it stays tied to them:
+      // someone who started playing after those weeks can never win it. Each
+      // winner is paid out of the weeks they were actually in.
+      const wk = runningWeeks.map(rw => ({ ...rw }));
+      winners.forEach(w => {
+        const fp = firstPlayedById[w.id];
+        const mine = wk.filter(rw => !rw.lockTime || fp == null || fp <= new Date(rw.lockTime).getTime());
+        const avail = mine.reduce((sum, rw) => sum + rw.allocation, 0);
+        if (avail <= 0) return;
+        const take = Math.min(w.share, avail);
+        mine.forEach(rw => { rw.allocation -= take * (rw.allocation / avail); });
+      });
       claimed += paidOut;
-      running  = leftover;                // anything a late joiner couldn't take stays in the pot
-      runningWeeks = leftover > 0 ? [{ allocation: leftover, lockTime: null }] : [];
+      runningWeeks = wk.filter(rw => rw.allocation > 0.005);
+      running = runningWeeks.reduce((sum, rw) => sum + rw.allocation, 0);
       weekly.push({
         gameweekId: gw.id, number: gw.number, label: gw.label,
         allocation, pot, winners,
